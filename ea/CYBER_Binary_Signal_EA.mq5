@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.32"
+#property version   "1.33"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -87,6 +87,8 @@ input int    MicroPutStartMin     = 995;         // PUT window start (NY minutes
 input int    MicroPutEndMin       = 1010;        // PUT window end   (NY minutes: 16:50) [used in wide mode]
 input int    MicroPutExpiryBars   = 5;           // PUT expiry in bars (5 = 25 min on M5) [used in wide mode]
 input bool   MicroNoMonday        = false;       // Also skip Mondays (+1.1 pp, -25% signals)
+input bool   PaintHistorySignals  = true;        // Paint rule arrows on chart history (no saved trades needed)
+input int    HistorySignalBars    = 10000;       // Bars of chart history scanned for painted signals
 input bool   MicroCallEnabled     = false;       // Also trade the 17:50-18:00 NY CALL (adds 72-74% signals)
 input int    MicroCallStartMin    = 1070;        // CALL window start (NY minutes: 17:50)
 input int    MicroCallEndMin      = 1080;        // CALL window end   (NY minutes: 18:00)
@@ -262,6 +264,7 @@ int OnInit()
    g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
    g_initOk      = true;
    DrawHistoryMarkers();
+   DrawHistorySignals();
    UpdatePanel();
 
    string mode = EnableMicroRule ? "Micro-Fix (NY " + IntegerToString(MicroPutStartMin / 60) + ":" +
@@ -309,6 +312,7 @@ void OnTimer()
      {
       g_lastBarTime = barTime;
       ProcessSignals();
+      DrawHistorySignals();
      }
 
    //--- resolve pending trades whose expiry bar has closed
@@ -335,6 +339,7 @@ void OnTick()
      {
       g_lastBarTime = barTime;
       ProcessSignals();
+      DrawHistorySignals();
      }
    ResolvePending();
   }
@@ -465,6 +470,63 @@ int NyMinuteOfDay(datetime gmt)
    return(mdt.hour * 60 + mdt.min);
   }
 
+//--- NY minute for a HISTORICAL bar: the DST offset is taken from the
+//--- bar's own date, not from today (a winter bar must use EST even when
+//--- the EA runs in summer). Correct across DST transitions.
+int NyMinuteOfDayAt(datetime gmt)
+  {
+   MqlDateTime mdt;
+   int off = UseAutoUsDst ? (IsUsDst(gmt) ? -4 : -5) : ManualNyOffset;
+   TimeToStruct(gmt + off * 3600, mdt);
+   return(mdt.hour * 60 + mdt.min);
+  }
+
+//+------------------------------------------------------------------+
+//| Micro-Fix window lookup for a NY minute-of-day (shared by the     |
+//| live signal path and the historical painting, so both always      |
+//| agree). Returns the direction (-1 PUT / +1 CALL) and sets the     |
+//| expiry in bars; returns 0 when no window is active.               |
+//+------------------------------------------------------------------+
+int MicroDirectionAt(int nyMin, int &expiryBars)
+  {
+   int wStart = MicroPutStartMin;
+   int wEnd   = MicroPutEndMin;
+   if(MicroPrecisionMode)
+     {
+      //--- per-asset optimized windows (backtest Feb-Jul 2026, M5)
+      if(StringFind(_Symbol, "EURJPY") >= 0)
+        {
+         wStart = 1000; wEnd = 1005;                    // 16:40-16:45
+        }
+      else if(StringFind(_Symbol, "USDJPY") >= 0)
+        {
+         wStart = 1005; wEnd = 1005;                    // 16:45
+        }
+      else if(StringFind(_Symbol, "GBPUSD") >= 0)
+        {
+         wStart = 1000; wEnd = 1005;                    // 16:40-16:45
+        }
+      //--- EURGBP/AUDUSD/others fall back to the wide window
+     }
+   if(nyMin >= wStart && nyMin <= wEnd)
+     {
+      expiryBars = MicroPutExpiryBars;
+      if(MicroPrecisionMode && StringFind(_Symbol, "EURJPY") >= 0)
+         expiryBars = 4;                                // 20 min
+      else if(MicroPrecisionMode && StringFind(_Symbol, "USDJPY") >= 0)
+         expiryBars = 6;                                // 30 min
+      else if(MicroPrecisionMode && StringFind(_Symbol, "GBPUSD") >= 0)
+         expiryBars = 5;                                // 25 min
+      return(-1);
+     }
+   if(MicroCallEnabled && nyMin >= MicroCallStartMin && nyMin <= MicroCallEndMin)
+     {
+      expiryBars = MicroCallExpiryBars;
+      return(+1);
+     }
+   return(0);
+  }
+
 //+------------------------------------------------------------------+
 //| GMT time of the last closed bar (server time -> GMT)              |
 //+------------------------------------------------------------------+
@@ -514,7 +576,7 @@ void ProcessSignals()
       datetime sigGmt = BarGmtTime(1);
       if(sigGmt > 0)
         {
-         int nyMin = NyMinuteOfDay(sigGmt);
+         int nyMin = NyMinuteOfDayAt(sigGmt);   // bar's own DST, matches history
          bool friday = false;
          bool monday = false;
          MqlDateTime mdt;
@@ -526,37 +588,11 @@ void ProcessSignals()
 
          if(!(MicroNoFriday && friday) && !(MicroNoMonday && monday))
            {
-            int wStart = MicroPutStartMin;
-            int wEnd   = MicroPutEndMin;
-            int wExp   = MicroPutExpiryBars;
-            if(MicroPrecisionMode)
-              {
-               //--- per-asset optimized windows (backtest Feb-Jul 2026, M5)
-               if(StringFind(_Symbol, "EURJPY") >= 0)
-                 {
-                  wStart = 1000; wEnd = 1005; wExp = 4;    // 16:40-16:45, 20 min: 93.3%
-                 }
-               else if(StringFind(_Symbol, "USDJPY") >= 0)
-                 {
-                  wStart = 1005; wEnd = 1005; wExp = 6;    // 16:45, 30 min: 91.4%
-                 }
-               else if(StringFind(_Symbol, "GBPUSD") >= 0)
-                 {
-                  wStart = 1000; wEnd = 1005; wExp = 5;    // 16:40-16:45, 25 min: 88.8%
-                 }
-               //--- EURGBP/AUDUSD/others fall back to the wide window (k=5)
-              }
-            if(nyMin >= wStart && nyMin <= wEnd)
+            int microDir = MicroDirectionAt(nyMin, expiryBars);
+            if(microDir != 0)
               {
                rule = RULE_MICRO;
-               dir  = -1;
-               expiryBars = wExp;
-              }
-            else if(MicroCallEnabled && nyMin >= MicroCallStartMin && nyMin <= MicroCallEndMin)
-              {
-               rule = RULE_MICRO;
-               dir  = +1;
-               expiryBars = MicroCallExpiryBars;
+               dir  = microDir;
               }
            }
         }
@@ -817,7 +853,7 @@ void DrawSignalLabel(datetime time, double entry, int dir, datetime expiry, int 
 //--- loaded from the CSV -> fully non-repainting history on the chart)
 void DrawHistoryMarkers()
   {
-   ObjectsDeleteAll(0, MARKER_PREFIX + "H");
+   ObjectsDeleteAll(0, MARKER_PREFIX + "HIST");
    int n = ArraySize(g_trades);
    if(n == 0)
       return;
@@ -826,7 +862,7 @@ void DrawHistoryMarkers()
      {
       TradeRec t = g_trades[i];
       string side = (t.direction > 0) ? "CALL" : "PUT";
-      string name = StringFormat("%sH_%d", MARKER_PREFIX, shown);
+      string name = StringFormat("%sHIST_%d", MARKER_PREFIX, shown);
       string tip = StringFormat("%s %s | %s", side, _Symbol,
                                 (t.rule == RULE_MICRO) ? "Micro-Fix" :
                                 ((t.rule == RULE_SEASONAL) ? "NY-Close Seasonal" : "Burst Reversal"));
@@ -834,7 +870,7 @@ void DrawHistoryMarkers()
       //--- labels for the 3 most recent signals only (keeps the chart clean)
       if(shown < 3)
         {
-         string lbl = StringFormat("%sH_LBL_%d", MARKER_PREFIX, shown);
+         string lbl = StringFormat("%sHIST_LBL_%d", MARKER_PREFIX, shown);
          if(ObjectFind(0, lbl) >= 0)
             ObjectDelete(0, lbl);
          color clr = (t.direction > 0) ? clrLime : clrOrangeRed;
@@ -861,6 +897,100 @@ void DrawHistoryMarkers()
       DrawEntryPriceLine(last.entry, last.direction);
       DrawExpiryLine(last.expiry, last.direction);
      }
+  }
+
+//+------------------------------------------------------------------+
+//| Paint the rule's signals on the chart's OWN historical prices.   |
+//| No saved statistics needed: every closed bar in the scan range   |
+//| is checked with the exact same window logic as the live rule     |
+//| (per-bar DST, Friday/Monday filters, precision/wide windows).    |
+//| Arrows are drawn once at the bar's fixed time/price - fully      |
+//| non-repainting. Bars that already have a live/logged arrow are   |
+//| skipped so nothing is ever doubled.                              |
+//+------------------------------------------------------------------+
+void DrawHistorySignals()
+  {
+   ObjectsDeleteAll(0, MARKER_PREFIX + "HS");
+   if(!PaintHistorySignals)
+      return;
+
+   int totalBars = Bars(_Symbol, PERIOD_CURRENT);
+   if(totalBars <= 2)
+      return;
+   int start = (int)MathMin(totalBars - 1, HistorySignalBars);
+   if(start < 2)
+      return;
+
+   datetime gmtOffset = TimeCurrent() - TimeGMT();
+   int nt = ArraySize(g_trades);
+   int labeled = 0;
+
+   for(int shift = 1; shift < start; shift++)
+     {
+      datetime barTime = iTime(_Symbol, PERIOD_CURRENT, shift);
+      if(barTime <= 0)
+         continue;
+
+      //--- weekday filters (same as the live rule)
+      datetime barGmt = barTime - gmtOffset;
+      MqlDateTime mdt;
+      TimeToStruct(barGmt, mdt);
+      if(MicroNoFriday && mdt.day_of_week == 5)
+         continue;
+      if(MicroNoMonday && mdt.day_of_week == 1)
+         continue;
+
+      //--- window lookup (per-bar DST -> correct across the year)
+      int expiryBars = 0;
+      int dir = MicroDirectionAt(NyMinuteOfDayAt(barGmt), expiryBars);
+      if(dir == 0)
+         continue;
+
+      //--- skip bars that already carry a live/logged arrow
+      bool logged = false;
+      for(int j = 0; j < nt; j++)
+        {
+         if(g_trades[j].time == barTime)
+           {
+            logged = true;
+            break;
+           }
+        }
+      if(logged)
+         continue;
+
+      double entry = iClose(_Symbol, PERIOD_CURRENT, shift);
+      string name = StringFormat("%sHS_%d", MARKER_PREFIX, shift);
+      string tip = StringFormat("%s %s | Micro-Fix (historical)",
+                                (dir > 0) ? "CALL" : "PUT", _Symbol);
+      DrawArrowObject(name, barTime, entry, dir, tip);
+
+      //--- small labels on the 3 most recent painted signals only
+      if(labeled < 3)
+        {
+         datetime expiry = barTime + (datetime)(expiryBars * PeriodSeconds(PERIOD_CURRENT));
+         string lbl = StringFormat("%sHS_LBL_%d", MARKER_PREFIX, labeled);
+         if(ObjectFind(0, lbl) >= 0)
+            ObjectDelete(0, lbl);
+         color clr = (dir > 0) ? clrLime : clrOrangeRed;
+         string txt = StringFormat("%s | exp %s | %.5g", (dir > 0) ? "CALL" : "PUT",
+                                   TimeToString(expiry, TIME_MINUTES), entry);
+         if(ObjectCreate(0, lbl, OBJ_TEXT, 0, barTime, ArrowY(barTime, entry, dir)))
+           {
+            ObjectSetString(0, lbl, OBJPROP_TEXT, txt);
+            ObjectSetInteger(0, lbl, OBJPROP_COLOR, clr);
+            ObjectSetInteger(0, lbl, OBJPROP_FONTSIZE, 8);
+            ObjectSetString(0, lbl, OBJPROP_FONT, "Consolas");
+            ObjectSetInteger(0, lbl, OBJPROP_ANCHOR,
+                             (dir > 0) ? ANCHOR_LEFT_UPPER : ANCHOR_LEFT_LOWER);
+            ObjectSetInteger(0, lbl, OBJPROP_BACK, false);
+            ObjectSetInteger(0, lbl, OBJPROP_SELECTABLE, false);
+            ObjectSetInteger(0, lbl, OBJPROP_HIDDEN, true);
+           }
+         labeled++;
+        }
+     }
+   ChartRedraw(0);
   }
 
 //--- horizontal line at the entry price of the current trade

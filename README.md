@@ -112,6 +112,16 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    corner so they never overlap, and the font auto-shrinks so every line
    always fits the window.
 
+   **Historical painting (`PaintHistorySignals=true`, default):** the EA
+   scans the chart's own closed bars (last `HistorySignalBars` = 10,000 by
+   default, ~35 days on M5) and paints an arrow at every historical price
+   where the micro-fix rule would have fired — even on a brand-new chart with
+   no saved statistics. It uses the same shared window logic as live signals
+   (per-bar US-DST so winter/summer bars are placed correctly, Friday/Monday
+   filters, precision/wide mode) and skips bars that already carry a live
+   arrow. Expect ~56 arrows on EURJPY/GBPUSD, ~28 on USDJPY over 10,000 M5
+   bars; raise `HistorySignalBars` to paint deeper history.
+
 ## Using the signals on Quotex
 
 1. When an arrow appears (or an Alert pops), open the same asset on Quotex.
