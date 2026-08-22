@@ -54,6 +54,19 @@
 #define PANEL_PREFIX "CYBER_PANEL_"
 #define MARKER_PREFIX "CYBER_MARK_"
 
+//--- statistics file format version (bump when the CSV layout changes)
+#define LOG_VERSION   3
+
+//--- ShellExecuteW window mode (shell32.dll)
+#define SW_SHOWNORMAL 1
+
+//+------------------------------------------------------------------+
+//| Windows shell32 import (opens the HTML dashboard in the browser) |
+//+------------------------------------------------------------------+
+#import "shell32.dll"
+   int ShellExecuteW(long hwnd, string lpOperation, string lpFile, string lpParameters, string lpDirectory, int nShowCmd);
+#import
+
 //+------------------------------------------------------------------+
 //| Inputs                                                            |
 //+------------------------------------------------------------------+
@@ -1123,7 +1136,7 @@ string BuildHtmlDocument(string side, int wins, int losses, int scratches, int c
 bool OpenDashboardBrowser()
   {
    string path = TerminalInfoString(TERMINAL_PATH) + "\\MQL5\\Files\\" + DashboardFile;
-   int res = ShellExecuteW("open", path, NULL, NULL, SW_SHOWNORMAL);
+   int res = ShellExecuteW(0, "open", path, "", "", SW_SHOWNORMAL);
    if(res > 32)
      {
       Print("Dashboard opened in browser: ", path);

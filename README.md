@@ -162,5 +162,18 @@ The EA passed the strict bug-hunt milestone: static MQL5 syntax validation
 (`tools/check_mql5.py`), a tree-sitter MQL5 grammar parse, a Python runtime
 simulation of the EA's exact resolution semantics, and the US-DST formula was
 validated against the official America/New_York timezone (14,612 samples,
-0 mismatches). The EA's Micro-Fix logic reproduces the backtest exactly
-(83.57% in the EA-semantics simulation).
+0 mismatches). The EA's Micro-Fix logic reproduces the backtest exactly.
+
+**v1.30 compile fixes (MetaEditor-clean):** the file previously used
+`LOG_VERSION` and `SW_SHOWNORMAL` without defining them and called
+`ShellExecuteW` without importing it from shell32.dll — MetaEditor reported
+16 errors (undeclared identifiers + cascade "reference cannot used" /
+"implicit conversion" noise). Fixed:
+- `#define LOG_VERSION 3` (statistics file format version)
+- `#define SW_SHOWNORMAL 1` + `#import "shell32.dll"` block with the full
+  6-parameter `ShellExecuteW(long hwnd, ...)` signature (hwnd=0 in the call)
+- `NULL` string args replaced with `""` (MQL5 has no NULL for strings)
+- `tools/check_mql5.py` now also **resolves identifiers**: every identifier
+  used in the code must be declared (#define, #import, input, variable,
+  parameter, struct) or be a known MQL5 builtin — the check that would have
+  caught these bugs. Verified: removing `LOG_VERSION` fails the gate.
