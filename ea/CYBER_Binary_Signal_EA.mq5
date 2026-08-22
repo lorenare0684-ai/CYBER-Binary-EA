@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.36"
+#property version   "1.37"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -188,13 +188,18 @@ int               g_histTrades   = 0;
 int               g_histWins     = 0;
 int               g_histLosses   = 0;
 int               g_histScratches = 0;
+int               g_histScanned  = 0;    // closed bars actually scanned
+int               g_lastHistCount  = 0;  // bars of the last scan
+datetime          g_lastHistNewest = 0;  // newest bar time of the last scan
+bool              g_histPainted   = false;
+int               g_lastReportedBars = 0; // last coverage reported in the log
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                    |
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   Print("CYBER Binary EA v1.00 starting on ", _Symbol, " ", EnumToString(Period()));
+   Print("CYBER Binary EA v1.37 starting on ", _Symbol, " ", EnumToString(Period()));
 
    //--- validate inputs
    if(ExpiryBars < 1)
@@ -249,6 +254,11 @@ int OnInit()
    ArraySetAsSeries(buf2, true);
    ArraySetAsSeries(buf3, true);
 
+   //--- per-symbol + per-timeframe statistics file: trades logged on other
+   //--- pairs or timeframes can never pollute these numbers
+   g_logFile = "CYBER_Binary_EA_trades_" + SymbolFileName() + "_" +
+               EnumToString(Period()) + ".csv";
+
    //--- load persisted statistics
    if(ResetStats)
      {
@@ -262,15 +272,22 @@ int OnInit()
    //--- timer: pending-trade resolution + dashboard refresh
    EventSetTimer(1);
 
+   //--- painted-history stats FIRST, so the very first dashboard write
+   //--- already contains the full historical picture (not zeros)
+   g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
+   g_initOk      = true;
+   g_histPainted = false;      // force a fresh scan + repaint on every attach
+   g_lastHistCount = 0;
+   g_lastHistNewest = 0;
+   g_lastReportedBars = 0;
+   DrawHistoryMarkers();
+   DrawHistorySignals();
+
    //--- write + auto-open the HTML dashboard in a new window
    WriteDashboardHtml();
    if(AutoOpenDashboard && !MQLInfoInteger(MQL_TESTER))
       OpenDashboardBrowser();
 
-   g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
-   g_initOk      = true;
-   DrawHistoryMarkers();
-   DrawHistorySignals();
    UpdatePanel();
 
    string mode = EnableMicroRule ? "Micro-Fix (NY " + IntegerToString(MicroPutStartMin / 60) + ":" +
@@ -285,7 +302,56 @@ int OnInit()
          " | panel corner ", PanelCorner,
          (MQLInfoInteger(MQL_TESTER) ? " (tester layout)" : " (live layout)"),
          " | PaintHistorySignals ", PaintHistorySignals);
+   Print("CYBER: server offset from GMT ", (int)(TimeCurrent() - TimeGMT()) / 3600,
+         "h | stats file ", g_logFile,
+         " | detected: ", DetectedModeText());
    return(INIT_SUCCEEDED);
+  }
+
+//+------------------------------------------------------------------+
+//| Symbol name made safe for a file name                             |
+//+------------------------------------------------------------------+
+string SymbolFileName()
+  {
+   string s = _Symbol;
+   for(int i = 0; i < StringLen(s); i++)
+     {
+      ushort c = StringGetCharacter(s, i);
+      if(c == '/' || c == '\\' || c == ':' || c == '*' || c == '?' ||
+         c == '"' || c == '<' || c == '>' || c == '|')
+         StringSetCharacter(s, i, '_');
+     }
+   return(s);
+  }
+
+//+------------------------------------------------------------------+
+//| "H:MM" from minute-of-day                                         |
+//+------------------------------------------------------------------+
+string MinutesToHm(int m)
+  {
+   return(StringFormat("%d:%02d", m / 60, m % 60));
+  }
+
+//+------------------------------------------------------------------+
+//| Human-readable description of the rule configuration in effect    |
+//+------------------------------------------------------------------+
+string DetectedModeText()
+  {
+   if(!EnableMicroRule)
+      return(EnableSeasonalRule ? "legacy seasonal only" : "no rule enabled");
+   if(!MicroPrecisionMode)
+      return("Micro-Fix WIDE (PUT " + MinutesToHm(MicroPutStartMin) + "-" +
+             MinutesToHm(MicroPutEndMin) + " NY, exp " +
+             IntegerToString(MicroPutExpiryBars) + " bars)");
+   if(StringFind(_Symbol, "EURJPY") >= 0)
+      return("Micro-Fix precision EURJPY (PUT 16:40-16:45 NY, exp 4 bars / 20 min)");
+   if(StringFind(_Symbol, "USDJPY") >= 0)
+      return("Micro-Fix precision USDJPY (PUT 16:45 NY, exp 6 bars / 30 min)");
+   if(StringFind(_Symbol, "GBPUSD") >= 0)
+      return("Micro-Fix precision GBPUSD (PUT 16:40-16:45 NY, exp 5 bars / 25 min)");
+   return("Micro-Fix WIDE fallback (PUT " + MinutesToHm(MicroPutStartMin) + "-" +
+          MinutesToHm(MicroPutEndMin) + " NY, exp " +
+          IntegerToString(MicroPutExpiryBars) + " bars) - pair NOT in the validated set");
   }
 
 //+------------------------------------------------------------------+
@@ -321,16 +387,18 @@ void OnTimer()
      {
       g_lastBarTime = barTime;
       ProcessSignals();
-      DrawHistorySignals();
      }
 
    //--- resolve pending trades whose expiry bar has closed
    ResolvePending();
 
-   //--- periodic dashboard refresh
+   //--- periodic dashboard refresh (the history scan re-runs here too: it
+   //--- picks up bars the terminal downloads in the background and resolves
+   //--- the newest painted signal once its expiry bar has closed)
    if(TimeCurrent() - g_lastHtmlTime >= RefreshSeconds)
      {
       g_lastHtmlTime = TimeCurrent();
+      DrawHistorySignals();
       WriteDashboardHtml();
       UpdatePanel();
      }
@@ -920,20 +988,32 @@ void DrawHistoryMarkers()
 //+------------------------------------------------------------------+
 void DrawHistorySignals()
   {
-   ObjectsDeleteAll(0, MARKER_PREFIX + "HS");
    if(!PaintHistorySignals)
       return;
 
-   int totalBars = Bars(_Symbol, PERIOD_CURRENT);
-   if(totalBars <= 2)
+   //--- CopyRates also triggers the terminal to DOWNLOAD chart history, so
+   //--- the scan covers the full requested range even on a freshly attached
+   //--- chart (which only has a few hundred/thousand cached bars otherwise)
+   MqlRates rates[];
+   ArraySetAsSeries(rates, true);
+   int got = CopyRates(_Symbol, PERIOD_CURRENT, 0, HistorySignalBars, rates);
+   if(got < 2)
       return;
-   int start = (int)MathMin(totalBars - 1, HistorySignalBars);
-   if(start < 2)
+
+   //--- exactly the same bars as the last scan? arrows + statistics are
+   //--- already up to date - keep them (no flicker, no wasted work)
+   if(g_histPainted && got == g_lastHistCount && rates[0].time == g_lastHistNewest)
       return;
+
+   ObjectsDeleteAll(0, MARKER_PREFIX + "HS");
+   g_lastHistCount  = got;
+   g_lastHistNewest = rates[0].time;
+   g_histScanned    = got - 1;      // index 0 = current forming bar, not scanned
 
    datetime gmtOffset = TimeCurrent() - TimeGMT();
    int nt = ArraySize(g_trades);
    int labeled = 0;
+   int painted = 0;
 
    //--- recompute the historical statistics on every scan
    g_histTrades = 0;
@@ -941,9 +1021,9 @@ void DrawHistorySignals()
    g_histLosses = 0;
    g_histScratches = 0;
 
-   for(int shift = 1; shift < start; shift++)
+   for(int shift = 1; shift < got; shift++)
      {
-      datetime barTime = iTime(_Symbol, PERIOD_CURRENT, shift);
+      datetime barTime = rates[shift].time;
       if(barTime <= 0)
          continue;
 
@@ -975,21 +1055,23 @@ void DrawHistorySignals()
       if(logged)
          continue;
 
-      double entry = iClose(_Symbol, PERIOD_CURRENT, shift);
+      double entry = rates[shift].close;
       string name = StringFormat("%sHS_%d", MARKER_PREFIX, shift);
       string tip = StringFormat("%s %s | Micro-Fix (historical)",
                                 (dir > 0) ? "CALL" : "PUT", _Symbol);
       DrawArrowObject(name, barTime, entry, dir, tip);
+      painted++;
 
       //--- resolve the outcome for the dashboard statistics (same exact-
       //--- expiry policy as the live ResolvePending: the bar that OPENS at
       //--- the expiry time decides; missing bar = not counted, matching the
-      //--- backtest)
+      //--- backtest). The expiry bar must have CLOSED (expShift >= 1), so a
+      //--- just-painted signal is counted only from its expiry bar close on.
       datetime expTime = barTime + (datetime)(expiryBars * PeriodSeconds(PERIOD_CURRENT));
       int expShift = iBarShift(_Symbol, PERIOD_CURRENT, expTime, true);
-      if(expShift >= 0)
+      if(expShift >= 1)
         {
-         double exitPrice = iClose(_Symbol, PERIOD_CURRENT, expShift);
+         double exitPrice = rates[expShift].close;
          bool win  = (dir < 0) ? (exitPrice < entry) : (exitPrice > entry);
          bool loss = (dir < 0) ? (exitPrice > entry) : (exitPrice < entry);
          g_histTrades++;
@@ -1026,7 +1108,18 @@ void DrawHistorySignals()
          labeled++;
         }
      }
+   g_histPainted = true;
    ChartRedraw(0);
+
+   //--- diagnostics: printed when the scanned range changes (first scan or
+   //--- after the terminal downloaded more bars in the background)
+   if(g_lastReportedBars != got)
+     {
+      g_lastReportedBars = got;
+      Print(StringFormat("CYBER: history scan %d bars -> %d painted signals, resolved %d (%dW/%dL/%dT)",
+                         g_histScanned, painted, g_histTrades,
+                         g_histWins, g_histLosses, g_histScratches));
+     }
   }
 
 //--- horizontal line at the entry price of the current trade
@@ -1280,7 +1373,7 @@ void WriteDashboardHtml()
                                    net, pf, maxDD, callWins, callLosses, putWins, putLosses,
                                    bestStreak, worstStreak, seasonalTrades, burstTrades,
                                    microTrades, g_histWins, g_histLosses, g_histScratches,
-                                   g_histTrades, rows);
+                                   g_histTrades, g_histScanned, DetectedModeText(), rows);
    int h = FileOpen(DashboardFile, FILE_TXT | FILE_WRITE | FILE_ANSI |
                     FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE)
@@ -1301,6 +1394,7 @@ string BuildHtmlDocument(string side, int wins, int losses, int scratches, int c
                          int bestStreak, int worstStreak,
                          int seasonalTrades, int burstTrades, int microTrades,
                          int histWins, int histLosses, int histScratches, int histTrades,
+                         int histScanned, string modeTxt,
                          string rows)
   {
    int closedAll = wins + losses + scratches + cancels;
@@ -1353,18 +1447,22 @@ string BuildHtmlDocument(string side, int wins, int losses, int scratches, int c
    html += "<h1>CYBER Binary EA<span class='sub'>Quotex signal dashboard &middot; " + _Symbol +
            " &middot; " + EnumToString(Period()) + " &middot; " +
            TimeToString(TimeCurrent(), TIME_DATE | TIME_MINUTES) +
-           " &middot; <span class='badge'>" + side + "</span></span></h1>";
+           " &middot; <span class='badge'>" + side + "</span> &middot; " + modeTxt + "</span></h1>";
    html += "<div class='grid'>";
    html += "<div class='card'><h2>Accuracy (live + history)</h2><div class='big acc'>" +
            DoubleToString(accAll, 1) +
            "%</div><div class='small'>" + IntegerToString(totWins) + "W / " +
            IntegerToString(totLosses) + "L &middot; " + IntegerToString(totalAll) +
-           " closed &middot; live " + IntegerToString(wins + losses) + " + painted history " +
-           IntegerToString(histTrades) + "</div></div>";
+           " closed &middot; live " + IntegerToString(wins + losses) + " + history " +
+           IntegerToString(histTrades) + " resolved / " + IntegerToString(histScanned) +
+           " bars scanned</div></div>";
    html += "<div class='card'><h2>Live vs History</h2><div class='num'><span class='win'>" +
            IntegerToString(wins) + "W/" + IntegerToString(losses) +
            "L</span> &middot; <span class='acc'>" + IntegerToString(histWins) + "W/" +
-           IntegerToString(histLosses) + "L</span></div><div class='small'>this session / painted from chart data</div></div>";
+           IntegerToString(histLosses) + "L</span></div><div class='small'>" +
+           ((wins + losses == 0) ? "no live trades yet &middot; history painted from chart data"
+                                 : "this session / painted from chart data") +
+           "</div></div>";
    html += "<div class='card'><h2>Wins / Losses</h2><div class='num'><span class='win'>" +
            IntegerToString(totWins) + "</span> / <span class='loss'>" + IntegerToString(totLosses) +
            "</span></div><div class='small'>ties " + IntegerToString(scratches + histScratches) +
@@ -1377,14 +1475,14 @@ string BuildHtmlDocument(string side, int wins, int losses, int scratches, int c
    html += "<div class='card'><h2>CALL / PUT</h2><div class='num'><span class='call'>" +
            IntegerToString(callWins) + "-" + IntegerToString(callLosses) +
            "</span> &middot; <span class='put'>" + IntegerToString(putWins) + "-" +
-           IntegerToString(putLosses) + "</span></div><div class='small'>wins-losses by direction</div></div>";
+           IntegerToString(putLosses) + "</span></div><div class='small'>wins-losses by direction (live)</div></div>";
    html += "<div class='card'><h2>Streaks</h2><div class='num'><span class='win'>+" +
            IntegerToString(bestStreak) + "</span> / <span class='loss'>" +
-           IntegerToString(worstStreak) + "</span></div><div class='small'>best / worst consecutive</div></div>";
+           IntegerToString(worstStreak) + "</span></div><div class='small'>best / worst consecutive (live)</div></div>";
    html += "<div class='card'><h2>Rules</h2><div class='num'>" + IntegerToString(microTrades) +
            "</div><div class='small'>micro-fix " + IntegerToString(microTrades) +
            " &middot; seasonal " + IntegerToString(seasonalTrades) +
-           " &middot; burst " + IntegerToString(burstTrades) + "</div></div>";
+           " &middot; burst " + IntegerToString(burstTrades) + " (live)</div></div>";
    html += "</div>";
    html += "<div class='card'><h2>Last signals</h2>";
    html += "<table><thead><tr><th>Time (server)</th><th>Direction</th><th>Rule</th><th>Entry</th><th>Result</th></tr></thead>";
@@ -1472,7 +1570,8 @@ void UpdatePanel()
                         IntegerToString(losses + g_histLosses) + "L)";
    lines[lineCount++] = "Live " + IntegerToString(wins) + "W/" + IntegerToString(losses) + "L" +
                         "   Hist " + IntegerToString(g_histWins) + "W/" +
-                        IntegerToString(g_histLosses) + "L";
+                        IntegerToString(g_histLosses) + "L (" +
+                        IntegerToString(g_histTrades) + " sig)";
    lines[lineCount++] = "Win rate   " + DoubleToString(winRateAll, 1) + "%";
    lines[lineCount++] = "Net (" + DoubleToString(Payout * 100.0, 0) + "%)  " +
                         (netAll >= 0.0 ? "+" : "") + DoubleToString(netAll, 2);

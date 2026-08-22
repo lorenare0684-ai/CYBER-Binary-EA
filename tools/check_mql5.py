@@ -39,6 +39,22 @@ def strip_code(src):
             else:
                 out.append("'1'")
                 i = j + 1
+        elif c == "'":
+            # plain char literal ('/', '\\', '\'' ...)
+            j = i + 1
+            while j < n:
+                if src[j] == "\\":
+                    j += 2
+                    continue
+                if src[j] == "'":
+                    break
+                j += 1
+            if j >= n:
+                out.append("'UNTERMINATED CHAR LITERAL'")
+                i = n
+            else:
+                out.append("'1'")
+                i = j + 1
         elif c == '"':
             j = i + 1
             while j < n:
@@ -430,7 +446,8 @@ def check_identifiers(src, code):
     # drop preprocessor + input declaration lines, keep only the object of member access
     code = re.sub(r"(?m)^\s*#\w+.*$", "", code)
     code = re.sub(r"(?m)^\s*input\s+.*$", "", code)
-    code = re.sub(r"\b(\w+)\.(\w+)", r"\1", code)
+    # obj.field and arr[idx].field -> keep the object only
+    code = re.sub(r"([\w\]])(\.\w+)", r"\1", code)
     used = set(re.findall(r"\b[A-Za-z_]\w*\b", code))
     known = declared | MQL5_KEYWORDS | MQL5_PREDEFINED | MQL5_BUILTINS
     unknown = sorted(u for u in used if u not in known)

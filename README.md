@@ -133,6 +133,20 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    numbers already reflect the full recent history of the rule on that
    chart, not just trades you watched happen.
 
+   **v1.37 — the history scan now forces the terminal to download the full
+   requested history** (`CopyRates` triggers background download), so the
+   stats are computed over the complete `HistorySignalBars` range even on a
+   freshly attached chart that only has a few hundred cached bars. The
+   dashboard shows exactly what it scanned ("N resolved / M bars scanned"),
+   the panel shows the painted-signal count, and the Experts log prints
+   `CYBER: history scan 10000 bars -> 56 painted signals, resolved 56
+   (50W/6L/0T)` whenever coverage changes. The persisted live-trades file is
+   now **per symbol + timeframe** (`CYBER_Binary_EA_trades_EURJPY_PERIOD_M5.csv`)
+   so trades logged on other pairs or timeframes can never pollute the
+   accuracy; the old shared file is left untouched. Live-only dashboard
+   fields (CALL/PUT, streaks, rules) are labelled "(live)" and show a
+   "no live trades yet" hint instead of a bare 0/0.
+
 ## Using the signals on Quotex
 
 1. When an arrow appears (or an Alert pops), open the same asset on Quotex.
@@ -144,8 +158,6 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    expiry line, and a **live "Last Signal" panel** (bottom-left) with a
    countdown to expiry and the result once closed.
 5. Optional: enable `NotifyOnSignal` (push). The EA handles US-DST
-   automatically; only set `ManualNyOffset` if you disable `UseAutoUsDst`.
-4. Optional: enable `NotifyOnSignal` (push). The EA handles US-DST
    automatically; only set `ManualNyOffset` if you disable `UseAutoUsDst`.
 
 ## Key inputs
