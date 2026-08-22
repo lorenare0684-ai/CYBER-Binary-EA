@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.33"
+#property version   "1.34"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -132,7 +132,7 @@ input bool   ShowPanel            = true;        // Show on-chart dashboard pane
 input bool   AutoOpenDashboard    = true;        // Auto-open HTML dashboard in browser
 input string DashboardFile        = "CYBER_Binary_Dashboard.html"; // HTML dashboard file name
 input int    RefreshSeconds       = 5;           // Dashboard refresh interval (seconds)
-input int    PanelCorner          = 3;           // Panel corner (0=TL, 1=TR, 2=BL, 3=BR)
+input int    PanelCorner          = 0;           // Panel corner - MQL5: 0=top-left, 1=bottom-left, 2=bottom-right, 3=top-right
 
 input group "=== Alerts ==="
 input bool   AlertOnSignal        = true;        // Show Alert() popup on new signal
