@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.34"
+#property version   "1.35"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -275,7 +275,10 @@ int OnInit()
                   IntegerToString(MicroCallEndMin / 60) + ":" + StringFormat("%02d", MicroCallEndMin % 60) +
                   " CALL, auto-DST " + (UseAutoUsDst ? "on" : "off") + ")" :
                   (EnableSeasonalRule ? "NY-Close Seasonal (UTC)" : "none");
-   Print("CYBER Binary EA ready. Mode: ", mode);
+   Print("CYBER Binary EA ready. Mode: ", mode,
+         " | panel corner ", PanelCorner,
+         (MQLInfoInteger(MQL_TESTER) ? " (tester layout)" : " (live layout)"),
+         " | PaintHistorySignals ", PaintHistorySignals);
    return(INIT_SUCCEEDED);
   }
 
@@ -340,6 +343,7 @@ void OnTick()
       g_lastBarTime = barTime;
       ProcessSignals();
       DrawHistorySignals();
+      UpdatePanel();
      }
    ResolvePending();
   }
@@ -1372,14 +1376,19 @@ void UpdatePanel()
    if(chartW < 100 || chartH < 100)
       return;
 
-   //--- scale fonts and panel width with the window size (always fits)
-   int maxLines = 12;
-   int margin   = 8;
-   int baseFont = (int)MathMax(8, MathMin(14, chartW / 110));
+   //--- tester-aware layout
+   bool inTester = (MQLInfoInteger(MQL_TESTER) != 0);
+   int maxLines = inTester ? 8 : 12;
+   int margin   = inTester ? 34 : 8;
+   int baseFont = inTester
+                  ? (int)MathMax(7, MathMin(11, chartW / 130))
+                  : (int)MathMax(8, MathMin(14, chartW / 110));
    int fontByH  = (chartH - 2 * margin - 12) / (maxLines + 1);
    if(fontByH < baseFont)
-      baseFont = MathMax(7, fontByH);
-   int panelW   = (int)MathMax(230, MathMin(400, chartW / 4));
+      baseFont = MathMax(6, fontByH);
+   int panelW   = inTester
+                  ? (int)MathMax(150, MathMin(300, chartW / 4))
+                  : (int)MathMax(230, MathMin(400, chartW / 4));
    int lineH    = baseFont + 7;
 
    int wins, losses, scratches, cancels, callWins, callLosses, putWins, putLosses;
@@ -1397,7 +1406,8 @@ void UpdatePanel()
    int lineCount = 0;
    lines[lineCount++] = "CYBER BINARY EA";
    lines[lineCount++] = _Symbol + "  " + EnumToString(Period());
-   lines[lineCount++] = "----------------------------";
+   if(!inTester)
+      lines[lineCount++] = "----------------------------";
    lines[lineCount++] = "Accuracy   " + DoubleToString(acc, 1) + "%  (" +
                         IntegerToString(wins) + "W / " + IntegerToString(losses) + "L)";
    lines[lineCount++] = "Win rate   " + DoubleToString(winRate, 1) + "%";
@@ -1405,27 +1415,32 @@ void UpdatePanel()
                         (net >= 0.0 ? "+" : "") + DoubleToString(net, 2);
    lines[lineCount++] = "Profit F.  " + DoubleToString(pf, 2) +
                         "   MaxDD " + DoubleToString(maxDD, 1);
-   lines[lineCount++] = "CALL " + IntegerToString(callWins) + "-" + IntegerToString(callLosses) +
-                        "   PUT " + IntegerToString(putWins) + "-" + IntegerToString(putLosses);
-   lines[lineCount++] = "Best " + IntegerToString(bestStreak) + " / Worst " +
-                        IntegerToString(worstStreak);
-   lines[lineCount++] = "Micro " + IntegerToString(microTrades) + "  Season. " +
-                        IntegerToString(seasonalTrades) + "  Burst " + IntegerToString(burstTrades);
-   lines[lineCount++] = "----------------------------";
+   if(!inTester)
+     {
+      lines[lineCount++] = "CALL " + IntegerToString(callWins) + "-" + IntegerToString(callLosses) +
+                           "   PUT " + IntegerToString(putWins) + "-" + IntegerToString(putLosses);
+      lines[lineCount++] = "Best " + IntegerToString(bestStreak) + " / Worst " +
+                           IntegerToString(worstStreak);
+      lines[lineCount++] = "Micro " + IntegerToString(microTrades) + "  Season. " +
+                           IntegerToString(seasonalTrades) + "  Burst " + IntegerToString(burstTrades);
+      lines[lineCount++] = "----------------------------";
+     }
    lines[lineCount++] = "Status: " + CurrentWindowStatus();
 
    int panelH = lineCount * lineH + baseFont + 12;
 
    //--- the last-signal panel is stacked ABOVE this panel: shrink the font
-   //--- until both fit inside the chart window (no lines ever cut off)
+   //--- until both fit inside the chart window (no lines ever cut off).
+   //--- On small tester charts the last-signal panel is omitted entirely.
+   bool showLs = (!inTester || chartH >= 440);
    int lsMaxLines = 6;
-   int lsH = lsMaxLines * lineH + baseFont + 12;
+   int lsH = showLs ? (lsMaxLines * lineH + baseFont + 12) : 0;
    while(panelH + lsH + 6 + 2 * margin > chartH && baseFont > 6)
      {
       baseFont--;
       lineH = baseFont + 7;
       panelH = lineCount * lineH + baseFont + 12;
-      lsH = lsMaxLines * lineH + baseFont + 12;
+      lsH = showLs ? (lsMaxLines * lineH + baseFont + 12) : 0;
      }
 
    //--- background rectangle
@@ -1436,8 +1451,8 @@ void UpdatePanel()
    ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, margin);
    ObjectSetInteger(0, bgName, OBJPROP_XSIZE, panelW);
    ObjectSetInteger(0, bgName, OBJPROP_YSIZE, panelH);
-   ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, C'13,20,36');
-   ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, C'35,44,68');
+   ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, ColorToARGB(C'13,20,36', 215));
+   ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, ColorToARGB(C'35,44,68', 215));
    ObjectSetInteger(0, bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
    ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
@@ -1468,7 +1483,8 @@ void UpdatePanel()
 
    //--- last-signal detail panel, stacked ABOVE the stats panel (same
    //--- corner, offset by the stats panel height -> never overlaps)
-   DrawLastSignalPanel(chartW, chartH, baseFont, margin + panelH + 6, panelW);
+   if(showLs)
+      DrawLastSignalPanel(chartW, chartH, baseFont, margin + panelH + 6, panelW);
 
    ChartRedraw(0);
   }
@@ -1530,8 +1546,8 @@ void DrawLastSignalPanel(int chartW, int chartH, int baseFont, int yOffset, int 
    ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, yOffset);
    ObjectSetInteger(0, bgName, OBJPROP_XSIZE, panelW);
    ObjectSetInteger(0, bgName, OBJPROP_YSIZE, panelH);
-   ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, C'13,20,36');
-   ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, C'35,44,68');
+   ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, ColorToARGB(C'13,20,36', 215));
+   ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, ColorToARGB(C'35,44,68', 215));
    ObjectSetInteger(0, bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
    ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
    ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);

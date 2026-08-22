@@ -110,7 +110,10 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    its statistics file** as fixed arrows, so you see the history immediately.
    The two panels (stats + last-signal with countdown) are stacked at the same
    corner so they never overlap, and the font auto-shrinks so every line
-   always fits the window.
+   always fits the window. In the **Strategy Tester** the panel switches to a
+   compact layout automatically (fewer lines, smaller font, offset below the
+   tester's control strip; the last-signal panel is hidden on small tester
+   charts) so it never covers the price chart.
 
    **Historical painting (`PaintHistorySignals=true`, default):** the EA
    scans the chart's own closed bars (last `HistorySignalBars` = 10,000 by

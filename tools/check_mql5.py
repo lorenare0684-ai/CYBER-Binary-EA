@@ -254,7 +254,7 @@ MQL5_BUILTINS = {
     "TimeToString", "ColorToString", "ShortToString", "CharArrayToString",
     "StringToShortArray", "StringToCharArray", "StringGetCharacter", "StringSetCharacter",
     "StringFill", "StringInit", "StringSetLength", "StringToShortArray",
-    "CharToString", "EnumToString",
+    "CharToString", "EnumToString", "ColorToARGB", "ColorToString",
     # --- math ---
     "MathMax", "MathMin", "MathAbs", "MathRound", "MathFloor", "MathCeil",
     "MathSqrt", "MathPow", "MathLog", "MathLog10", "MathExp", "MathSin", "MathCos",
