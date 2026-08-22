@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.39"
+#property version   "1.40"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -199,7 +199,7 @@ int               g_lastReportedBars = 0; // last coverage reported in the log
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   Print("CYBER Binary EA v1.39 starting on ", _Symbol, " ", EnumToString(Period()));
+   Print("CYBER Binary EA v1.40 starting on ", _Symbol, " ", EnumToString(Period()));
 
    //--- validate inputs
    if(ExpiryBars < 1)
@@ -1038,6 +1038,12 @@ void DrawHistorySignals()
    int labeled = 0;
    int painted = 0;
 
+   //--- feed sanity profile buckets (NY 15-min slots, 14:00-18:00)
+   int profW[16];
+   int profL[16];
+   ArrayInitialize(profW, 0);
+   ArrayInitialize(profL, 0);
+
    //--- recompute the historical statistics on every scan
    g_histTrades = 0;
    g_histWins   = 0;
@@ -1060,8 +1066,26 @@ void DrawHistorySignals()
          continue;
 
       //--- window lookup (per-bar DST -> correct across the year)
+      int nyMin = NyMinuteOfDayAt(barGmt);
       int expiryBars = 0;
-      int dir = MicroDirectionAt(NyMinuteOfDayAt(barGmt), expiryBars);
+
+      //--- feed sanity profile: PUT outcome by NY 15-min slot (14:00-18:00),
+      //--- fixed 20-min expiry, same exact-expiry policy. Shows WHERE the NY
+      //--- settlement drift sits on THIS feed (or if it exists at all) - the
+      //--- real market shows ~77-82% at 16:30-17:00 then ~18-40% after 17:00.
+      if(nyMin >= 840 && nyMin < 1080)
+        {
+         int expIdx = shift - 4;
+         if(expIdx >= 1 && rates[expIdx].time == barTime + 20 * 60)
+           {
+            if(rates[expIdx].close < rates[shift].close)
+               profW[(nyMin - 840) / 15]++;
+            else if(rates[expIdx].close > rates[shift].close)
+               profL[(nyMin - 840) / 15]++;
+           }
+        }
+
+      int dir = MicroDirectionAt(nyMin, expiryBars);
       if(dir == 0)
          continue;
 
@@ -1142,6 +1166,50 @@ void DrawHistorySignals()
       Print(StringFormat("CYBER: history scan %d bars -> %d painted signals, resolved %d (%dW/%dL/%dT)",
                          g_histScanned, painted, g_histTrades,
                          g_histWins, g_histLosses, g_histScratches));
+
+      //--- feed sanity report: WHERE does the down-drift sit on this feed?
+      //--- Real market: ~77-82% at 16:30-17:00 NY, then ~18-40% (reversal)
+      //--- after 17:00. A flat 40-55% everywhere = no settlement pattern
+      //--- (OTC/synthetic feed); a strong slot away from 16:15-17:15 = the
+      //--- broker's clock/offset differs from NY by a fixed shift.
+      string prof = "CYBER: window profile (PUT, 20-min, NY): ";
+      int bestIdx = -1, bestN = 0;
+      double bestAcc = 0.0;
+      for(int b = 0; b < 16; b++)
+        {
+         int nb = profW[b] + profL[b];
+         if(nb < 5)
+            continue;
+         double a = 100.0 * profW[b] / nb;
+         if(nb >= 8 && a > bestAcc)
+           {
+            bestAcc = a;
+            bestIdx = b;
+            bestN  = nb;
+           }
+         int st = 840 + 15 * b;
+         prof += StringFormat("%02d:%02d %d%%(%d) ", st / 60, st % 60,
+                              (int)MathRound(a), nb);
+        }
+      Print(prof);
+      if(bestIdx >= 0)
+        {
+         int st = 840 + 15 * bestIdx;
+         string where = StringFormat("%02d:%02d-%02d:%02d", st / 60, st % 60,
+                                     (st + 15) / 60, (st + 15) % 60);
+         if(bestAcc >= 70.0 && bestIdx >= 9 && bestIdx <= 11)
+            Print("CYBER: NY settlement pattern DETECTED on this feed (best slot ",
+                  where, " ", DoubleToString(bestAcc, 1), "%, n=", bestN,
+                  ") - feed looks real, windows aligned");
+         else if(bestAcc >= 70.0)
+            Print("CYBER: strong pattern found but SHIFTED to ", where, " (",
+                  DoubleToString(bestAcc, 1), "%, n=", bestN,
+                  ") - broker server offset/feed differs by a fixed shift");
+         else
+            Print("CYBER: NO settlement pattern on this feed (best slot ", where,
+                  " ", DoubleToString(bestAcc, 1), "%, n=", bestN,
+                  ") - OTC/synthetic feed or different market; the 90%+ edge does not apply here");
+        }
      }
   }
 
