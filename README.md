@@ -177,3 +177,16 @@ validated against the official America/New_York timezone (14,612 samples,
   used in the code must be declared (#define, #import, input, variable,
   parameter, struct) or be a known MQL5 builtin — the check that would have
   caught these bugs. Verified: removing `LOG_VERSION` fails the gate.
+
+**v1.31 compile fixes (round 2):** MetaEditor reported `reference cannot used`
+(×4) and `implicit conversion from 'int' to 'string'` (×1). Fixed:
+- All 4 local `TradeRec &t = g_trades[i];` reference declarations replaced
+  with by-value copies (`TradeRec t = ...`) — MQL5 only allows references as
+  function parameters, so local references to array elements fail to compile.
+  All 4 sites only read the struct, so copies are semantically identical.
+- `LOG_VERSION` is now a string literal (`"3"`): it is compared against a
+  `FileReadString()` result (`verNum != LOG_VERSION`), and MQL5 rejects the
+  implicit int→string conversion in that comparison.
+- `tools/check_mql5.py` gained two more rules that catch both classes:
+  non-parameter `Type &name = ...` declarations, and string-variable vs
+  numeric-#define comparisons. Both sanity-tested (each fails the gate).

@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.30"
+#property version   "1.31"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -55,7 +55,9 @@
 #define MARKER_PREFIX "CYBER_MARK_"
 
 //--- statistics file format version (bump when the CSV layout changes)
-#define LOG_VERSION   3
+//--- string on purpose: it is compared to a FileReadString() value, and MQL5
+//--- rejects implicit int->string conversion in comparisons
+#define LOG_VERSION   "3"
 
 //--- ShellExecuteW window mode (shell32.dll)
 #define SW_SHOWNORMAL 1
@@ -837,7 +839,7 @@ void ComputeStats(int &wins, int &losses, int &scratches, int &cancels,
    int n = ArraySize(g_trades);
    for(int i = 0; i < n; i++)
      {
-      TradeRec &t = g_trades[i];
+      TradeRec t = g_trades[i];
       if(t.rule == RULE_SEASONAL) seasonalTrades++;
       if(t.rule == RULE_BURST)    burstTrades++;
       if(t.rule == RULE_MICRO)    microTrades++;
@@ -892,7 +894,7 @@ void SaveTrades()
    int n = ArraySize(g_trades);
    for(int i = 0; i < n; i++)
      {
-      TradeRec &t = g_trades[i];
+      TradeRec t = g_trades[i];
       FileWrite(h, TimeToString(t.time),
                 TimeToString(t.expiry),
                 IntegerToString(t.direction),
@@ -1006,7 +1008,7 @@ void WriteDashboardHtml()
    int n = ArraySize(g_trades);
    for(int i = n - 1; i >= 0 && shown < 12; i--)
      {
-      TradeRec &t = g_trades[i];
+      TradeRec t = g_trades[i];
       string resTxt = "PENDING";
       string resCls = "pend";
       if(t.result == TR_WIN)          { resTxt = "WIN";  resCls = "win";  }
@@ -1261,7 +1263,7 @@ void DrawLastSignalPanel(int chartW, int chartH, int baseFont)
    if(n == 0)
       return;
 
-   TradeRec &t = g_trades[n - 1];
+   TradeRec t = g_trades[n - 1];
    int lineH = baseFont + 7;
    int margin = 8;
 

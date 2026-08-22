@@ -144,6 +144,35 @@ def main():
     for name in unknown[:40]:
         errors.append(f"undeclared identifier '{name}'")
 
+    # MQL5 forbids non-parameter references: 'Type &name = ...' local decls
+    # (this produced the real 'reference cannot used' MetaEditor errors)
+    for m in re.finditer(r"(?:^|[;{]\s*)([A-Za-z_]\w*)\s*&\s*([A-Za-z_]\w*)\s*=", code):
+        errors.append(f"line {src[:m.start()].count(chr(10))+1}: reference declaration "
+                      f"'{m.group(1)} &{m.group(2)} = ...' is not allowed in MQL5 "
+                      f"(references only valid as function parameters) - use a copy or index")
+
+    # string variable compared with a numeric #define: MetaEditor errors
+    # 'implicit conversion from int to string' (e.g. verNum != LOG_VERSION)
+    string_vars = set()
+    for m in re.finditer(r"\bstring\s+([A-Za-z_]\w*)\b", code):
+        string_vars.add(m.group(1))
+    for m in re.finditer(r"(?m)^\s*input\s+string\s+(\w+)\s*=", src):
+        string_vars.add(m.group(1))
+    num_defines = {n for n, v in re.findall(r"(?m)^\s*#define\s+(\w+)\s+(\S+)", src)
+                   if re.fullmatch(r"[-+]?\d+(\.\d+)?", v)}
+    for m in re.finditer(r"\b([A-Za-z_]\w*)\s*(==|!=)\s*([A-Za-z_]\w*)\b", code):
+        a, op, b = m.group(1), m.group(2), m.group(3)
+        if a in string_vars and b in num_defines:
+            errors.append(f"line {src[:m.start()].count(chr(10))+1}: '{a} {op} {b}' "
+                          f"compares a string variable with a numeric #define - MetaEditor "
+                          f"errors 'implicit conversion from int to string' (make the "
+                          f"#define a string literal or use IntegerToString())")
+        elif b in string_vars and a in num_defines:
+            errors.append(f"line {src[:m.start()].count(chr(10))+1}: '{a} {op} {b}' "
+                          f"compares a string variable with a numeric #define - MetaEditor "
+                          f"errors 'implicit conversion from int to string' (make the "
+                          f"#define a string literal or use IntegerToString())")
+
     if errors:
         print(f"[FAIL] {path}: {len(errors)} issue(s)")
         for e in errors[:60]:
