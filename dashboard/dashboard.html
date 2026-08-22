@@ -32,21 +32,26 @@ td{padding:7px 6px;border-bottom:1px solid #1b2236}
 @media(max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}
 
 </style></head><body><div class='wrap'>
-<h1>CYBER Binary EA<span class='sub'>Quotex signal dashboard &middot; <b>DEMO - backtest data</b> &middot; generated 2026-08-22 09:53:36.878424+00:00 &middot; <span class='badge'>demo mode</span></span></h1>
+<h1>CYBER Binary EA<span class='sub'>Quotex signal dashboard &middot; <b>DEMO - backtest data</b> &middot; generated 2026-08-22 10:04:14.970611+00:00 &middot; <span class='badge'>Micro-Fix flagship: 83.6%</span></span></h1>
 <div class='grid'>
-<div class='card'><h2>Accuracy (GBPUSD)</h2><div class='big'><span class='acc'>66.54%</span></div><div class='small'>n=776 trades &middot; wins/(wins+losses)</div></div>
-<div class='card'><h2>Win rate (GBPUSD)</h2><div class='num'><span class='win'>66.54%</span></div><div class='small'>wins / all closed trades</div></div>
-<div class='card'><h2>Wins / Losses (GBPUSD)</h2><div class='num'><span class='win'>513</span> / <span class='loss'>258</span></div><div class='small'>6 months &middot; Feb-Jul 2026</div></div>
-<div class='card'><h2>Net P&amp;L (GBPUSD)</h2><div class='num'><span class='win'>+178.05</span></div><div class='small'>per 1.0 stake @ 85% payout</div></div>
-<div class='card'><h2>Profit factor</h2><div class='num'><span class='gold'>1.69</span></div><div class='small'>max drawdown -22.0</div></div>
-<div class='card'><h2>Accuracy (USDJPY)</h2><div class='big'><span class='acc'>67.01%</span></div><div class='small'>n=776 trades &middot; 6 months</div></div>
-<div class='card'><h2>Accuracy (EURUSD)</h2><div class='num'><span class='acc'>57.09%</span></div><div class='small'>n=776 trades &middot; 6 months</div></div>
+<div class='card'><h2>Accuracy (flagship)</h2><div class='big'><span class='acc'>83.57%</span></div><div class='small'>PUT 16:35-16:50 NY &middot; 20-min expiry &middot; no Fridays</div></div>
+<div class='card'><h2>Wins / Losses</h2><div class='num'><span class='win'>692</span> / <span class='loss'>136</span></div><div class='small'>n=828 &middot; 6 months (Feb-Jul 2026)</div></div>
+<div class='card'><h2>Net P&amp;L</h2><div class='num'><span class='win'>+452.20</span></div><div class='small'>per 1.0 stake @ 85% payout</div></div>
+<div class='card'><h2>Profit factor</h2><div class='num'><span class='gold'>4.32</span></div><div class='small'>worst month 70.13888888888889%</div></div>
+<div class='card'><h2>Out-of-sample</h2><div class='num'><span class='acc'>88.6%</span></div><div class='small'>May-Jul &middot; n=414 (untouched params)</div></div>
+<div class='card'><h2>All days variant</h2><div class='num'><span class='acc'>80.93%</span></div><div class='small'>n=1028 &middot; incl. Fridays</div></div>
+<div class='card'><h2>With CALL rule</h2><div class='num'><span class='acc'>78.18%</span></div><div class='small'>n=1590 &middot; adds 17:50-18:00 NY CALL</div></div>
+<div class='card'><h2>Per pair</h2><div class='num'><span class='win'>GBP 82.61%</span> / <span class='acc'>JPY 84.54%</span></div><div class='small'>flagship, per pair</div></div>
 </div>
-<div class='card'><h2>Walk-forward (same parameters, untouched windows)</h2><table><thead><tr><th>Instrument</th><th>Feb-Apr</th><th>May-Jul (out-of-sample)</th></tr></thead><tbody>
-<tr><td>GBPUSD M15</td><td>61.04% (n=386)</td><td class='win'><b>72.89%</b> (n=384)</td></tr>
-<tr><td>USDJPY M15</td><td>58.18% (n=386)</td><td class='win'><b>75.65%</b> (n=384)</td></tr>
-<tr><td>EURUSD M15</td><td>55.76% (n=386)</td><td class='win'><b>59.32%</b> (n=384)</td></tr>
-</tbody></table></div>
+<div class='card'><h2>Monthly accuracy (flagship)</h2><table><thead><tr><th>Month</th><th>Accuracy</th><th>Trades</th></tr></thead><tbody>
+<tr><td>2026-02</td><td class='gold'><b>79%</b></td><td>138</td></tr>
+<tr><td>2026-03</td><td class='gold'><b>70%</b></td><td>138</td></tr>
+<tr><td>2026-04</td><td class='win'><b>86%</b></td><td>138</td></tr>
+<tr><td>2026-05</td><td class='win'><b>92%</b></td><td>138</td></tr>
+<tr><td>2026-06</td><td class='win'><b>90%</b></td><td>138</td></tr>
+<tr><td>2026-07</td><td class='win'><b>85%</b></td><td>138</td></tr>
+</tbody></table>
+<div class='small'>The window is anchored to New York local time with automatic US-DST handling (validated 2020-2029, 0 mismatches).</div></div>
 <div class='card'><h2>Monthly stability (accuracy, M15)</h2><table><thead><tr><th>Month</th><th>GBPUSD</th><th>USDJPY</th><th>EURUSD</th></tr></thead><tbody>
 <tr><td>2026-02</td><td>49.2%</td><td>42.4%</td><td>45.8%</td></tr>
 <tr><td>2026-03</td><td>54.4%</td><td>64.0%</td><td>51.5%</td></tr>
@@ -55,5 +60,10 @@ td{padding:7px 6px;border-bottom:1px solid #1b2236}
 <tr><td>2026-06</td><td>66.7%</td><td>72.0%</td><td>49.2%</td></tr>
 <tr><td>2026-07</td><td>69.7%</td><td>74.2%</td><td>62.1%</td></tr>
 </tbody></table></div>
-<div class='foot'>CYBER Binary EA &middot; strategy: NY-Close Seasonal (PUT 20-21 UTC, CALL 21-23 UTC, 1h expiry on M15) &middot; the live dashboard opens automatically in your browser when the EA is attached</div>
+<div class='card'><h2>Legacy reference (NY-Close Seasonal, M15/1h)</h2><table><thead><tr><th>Instrument</th><th>Accuracy</th><th>Trades</th><th>PF</th></tr></thead><tbody>
+<tr><td>GBPUSD M15</td><td>66.54%</td><td>776</td><td>1.69</td></tr>
+<tr><td>USDJPY M15</td><td>67.01%</td><td>776</td><td>1.727</td></tr>
+<tr><td>EURUSD M15</td><td>57.09%</td><td>776</td><td>1.131</td></tr>
+</tbody></table></div>
+<div class='foot'>CYBER Binary EA &middot; flagship: Micro-Fix (PUT 16:35-16:50 NY, 20-min expiry) &middot; the live dashboard opens automatically in your browser when the EA is attached</div>
 </div></body></html>

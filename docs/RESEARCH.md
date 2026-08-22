@@ -1,6 +1,6 @@
 # CYBER Binary EA - Strategy Validation Report
 
-_Generated 2026-08-22 09:43 UTC - data: getdata.finance OHLCV, Feb 1 - Jul 31 2026, 24/5 FX_
+_Generated 2026-08-22 10:03 UTC - data: getdata.finance OHLCV, Feb 1 - Jul 31 2026, 24/5 FX_
 
 ## 1. Strategy summary
 
@@ -56,9 +56,23 @@ The effect is regime-dependent: weak before ~2015, consistently present since 20
 | 2012-2017 | 54.8% (n=11170) | 56.0% (n=22359) |
 | 2018-2026 | 57.2% (n=6570) | 59.2% (n=13159) |
 
-## 6. Risk notes (read before live trading)
+## 6. Micro-Fix strategy (flagship, 80%+)
 
-- Feb 2026 was a macro-shock month (tariff news): every variant lost that month (42-49%). Expect occasional losing months; the edge is a slow drift, not a guarantee.
+**Mechanism.** The 30 minutes before the 17:00 New York CME/futures settlement show a reproducible dip (16:35-16:50 NY) followed by a rally into the electronic close (17:50-18:00 NY). Windows are anchored to NY local time with automatic US-DST handling (validated: 0 mismatches vs America/New_York over 2020-2029).
+
+| Variant | Trades | Accuracy | PF | Feb-Apr | May-Jul (OOS) |
+|---------|--------|----------|----|---------|---------------|
+| PUT 16:35-16:50 NY, 20-min expiry, no Fridays (default) | 828 | **83.57%** | 4.32 | 78.5% (n=414) | **88.6%** (n=414) |
+| PUT 16:35-16:50 NY, 20-min expiry, all days | 1028 | **80.93%** | 3.61 | 77.6% (n=510) | **84.2%** (n=518) |
+| PUT + CALL (17:50-18:00 NY, 10-min), no Fridays | 1590 | **78.18%** | 3.04 | 73.4% (n=794) | **82.9%** (n=796) |
+
+Monthly accuracy (flagship): 02:79% | 03:70% | 04:86% | 05:92% | 06:90% | 07:85%
+
+Per pair (flagship): GBPUSD: 82.61% (n=414) | USDJPY: 84.54% (n=414)
+
+## 7. Risk notes (read before live trading)
+
+- Feb 2026 was a macro-shock month (tariff news): the legacy M15 seasonal variants lost that month (42-49%), while the Micro-Fix strategy stayed profitable (79%). Expect occasional losing months; the edge is a slow drift, not a guarantee.
 - EURUSD is the weakest major (57-58%); GBPUSD and USDJPY are the strongest (62-67%).
 - Results use FX OHLC data; Quotex OTC candles can differ slightly (synthetic 24/7 feed).
 - Binary payout must be >= 55-56% for the M15 setup to be profitable after breakeven at 54.05% (85% payout); at lower payouts the edge shrinks.

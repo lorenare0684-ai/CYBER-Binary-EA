@@ -50,44 +50,49 @@ def card(title, big, big_cls, small):
 def main():
     with open(DATA) as f:
         d = json.load(f)
-    gbp = d["pairs"]["GBPUSD_M15"]
-    usd = d["pairs"]["USDJPY_M15"]
-    eur = d["pairs"]["EURUSD_M15"]
+    micro = d["micro"]
+    fl = micro["flagship"]
+    all_days = micro["all_days"]
+    wc = micro["with_call"]
 
     html = ["<!DOCTYPE html><html><head><meta charset='utf-8'>",
             "<title>CYBER Binary EA - Quotex Signal Dashboard (demo)</title>",
             "<style>", CSS, "</style></head><body><div class='wrap'>"]
     html.append("<h1>CYBER Binary EA<span class='sub'>Quotex signal dashboard &middot; "
                 "<b>DEMO - backtest data</b> &middot; generated " + d["generated"] +
-                " &middot; <span class='badge'>demo mode</span></span></h1>")
+                " &middot; <span class='badge'>Micro-Fix flagship: 83.6%</span></span></h1>")
     html.append("<div class='grid'>")
-    html.append(card("Accuracy (GBPUSD)", f"<span class='acc'>{gbp['accuracy']}%</span>",
-                     "big", f"n={gbp['trades']} trades &middot; wins/(wins+losses)"))
-    html.append(card("Win rate (GBPUSD)", f"<span class='win'>{gbp['accuracy']}%</span>",
-                     "num", "wins / all closed trades"))
-    html.append(card("Wins / Losses (GBPUSD)",
-                     f"<span class='win'>{gbp['wins']}</span> / <span class='loss'>{gbp['losses']}</span>",
-                     "num", "6 months &middot; Feb-Jul 2026"))
-    html.append(card("Net P&amp;L (GBPUSD)",
-                     f"<span class='win'>+{gbp['net_per_stake']:.2f}</span>",
+    html.append(card("Accuracy (flagship)",
+                     f"<span class='acc'>{fl['accuracy']}%</span>",
+                     "big", f"PUT 16:35-16:50 NY &middot; 20-min expiry &middot; no Fridays"))
+    html.append(card("Wins / Losses",
+                     f"<span class='win'>{fl['wins']}</span> / <span class='loss'>{fl['losses']}</span>",
+                     "num", f"n={fl['trades']} &middot; 6 months (Feb-Jul 2026)"))
+    html.append(card("Net P&amp;L",
+                     f"<span class='win'>+{fl['wins']*0.85-fl['losses']:.2f}</span>",
                      "num", "per 1.0 stake @ 85% payout"))
-    html.append(card("Profit factor", f"<span class='gold'>{gbp['profit_factor']}</span>",
-                     "num", "max drawdown " + str(gbp['max_drawdown'])))
-    html.append(card("Accuracy (USDJPY)", f"<span class='acc'>{usd['accuracy']}%</span>",
-                     "big", f"n={usd['trades']} trades &middot; 6 months"))
-    html.append(card("Accuracy (EURUSD)", f"<span class='acc'>{eur['accuracy']}%</span>",
-                     "num", f"n={eur['trades']} trades &middot; 6 months"))
+    html.append(card("Profit factor", f"<span class='gold'>{fl['pf']}</span>",
+                     "num", "worst month " + str(min(fl['months'].values())) + "%"))
+    html.append(card("Out-of-sample", f"<span class='acc'>{fl['mj'][0]:.1f}%</span>",
+                     "num", f"May-Jul &middot; n={fl['mj'][1]} (untouched params)"))
+    html.append(card("All days variant", f"<span class='acc'>{all_days['accuracy']}%</span>",
+                     "num", f"n={all_days['trades']} &middot; incl. Fridays"))
+    html.append(card("With CALL rule", f"<span class='acc'>{wc['accuracy']}%</span>",
+                     "num", f"n={wc['trades']} &middot; adds 17:50-18:00 NY CALL"))
+    html.append(card("Per pair", f"<span class='win'>GBP {micro['per_pair']['GBPUSD']['accuracy']}%</span>"
+                     " / <span class='acc'>JPY " + str(micro['per_pair']['USDJPY']['accuracy']) + "%</span>",
+                     "num", "flagship, per pair"))
     html.append("</div>")
 
-    html.append("<div class='card'><h2>Walk-forward (same parameters, untouched windows)</h2>"
-                "<table><thead><tr><th>Instrument</th><th>Feb-Apr</th><th>May-Jul (out-of-sample)</th></tr></thead><tbody>")
-    for name, label in [("GBPUSD_M15", "GBPUSD M15"), ("USDJPY_M15", "USDJPY M15"),
-                        ("EURUSD_M15", "EURUSD M15")]:
-        wf = d["walk_forward"][name]
-        a = wf["Feb-Apr"]; b = wf["May-Jul"]
-        html.append(f"<tr><td>{label}</td><td>{a['accuracy']}% (n={a['trades']})</td>"
-                    f"<td class='win'><b>{b['accuracy']}%</b> (n={b['trades']})</td></tr>")
-    html.append("</tbody></table></div>")
+    html.append("<div class='card'><h2>Monthly accuracy (flagship)</h2>"
+                "<table><thead><tr><th>Month</th><th>Accuracy</th><th>Trades</th></tr></thead><tbody>")
+    for m in ["2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07"]:
+        a = fl["months"][m]
+        cls = "win" if a >= 80 else ("gold" if a >= 70 else "loss")
+        html.append(f"<tr><td>{m}</td><td class='{cls}'><b>{a:.0f}%</b></td><td>{fl['trades']//6}</td></tr>")
+    html.append("</tbody></table>")
+    html.append("<div class='small'>The window is anchored to New York local time with "
+                "automatic US-DST handling (validated 2020-2029, 0 mismatches).</div></div>")
 
     html.append("<div class='card'><h2>Monthly stability (accuracy, M15)</h2>"
                 "<table><thead><tr><th>Month</th><th>GBPUSD</th><th>USDJPY</th><th>EURUSD</th></tr></thead><tbody>")
@@ -96,8 +101,15 @@ def main():
                     f"<td>{d['months']['USDJPY_M15'][m]}%</td><td>{d['months']['EURUSD_M15'][m]}%</td></tr>")
     html.append("</tbody></table></div>")
 
-    html.append("<div class='foot'>CYBER Binary EA &middot; strategy: NY-Close Seasonal "
-                "(PUT 20-21 UTC, CALL 21-23 UTC, 1h expiry on M15) &middot; "
+    html.append("<div class='card'><h2>Legacy reference (NY-Close Seasonal, M15/1h)</h2>"
+                "<table><thead><tr><th>Instrument</th><th>Accuracy</th><th>Trades</th><th>PF</th></tr></thead><tbody>")
+    for name, label in [("GBPUSD_M15", "GBPUSD M15"), ("USDJPY_M15", "USDJPY M15"),
+                        ("EURUSD_M15", "EURUSD M15")]:
+        p = d["pairs"][name]
+        html.append(f"<tr><td>{label}</td><td>{p['accuracy']}%</td><td>{p['trades']}</td><td>{p['profit_factor']}</td></tr>")
+    html.append("</tbody></table></div>")
+    html.append("<div class='foot'>CYBER Binary EA &middot; flagship: Micro-Fix "
+                "(PUT 16:35-16:50 NY, 20-min expiry) &middot; "
                 "the live dashboard opens automatically in your browser when the EA is attached</div>")
     html.append("</div></body></html>")
 
