@@ -1,0 +1,652 @@
+[
+ {
+  "label": "(8, 34, 50, 9, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8912,
+  "wins": 4434,
+  "losses": 4357,
+  "scratches": 121,
+  "accuracy": 50.44,
+  "net_per_stake": -588.1,
+  "profit_factor": 0.865,
+  "max_drawdown": -592.65,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(8, 34, 50, 14, (50, 70), 20, 4, 4, 0.0)",
+  "trades": 8954,
+  "wins": 4445,
+  "losses": 4379,
+  "scratches": 130,
+  "accuracy": 50.37,
+  "net_per_stake": -600.75,
+  "profit_factor": 0.863,
+  "max_drawdown": -603.55,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 34, 50, 9, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8944,
+  "wins": 4443,
+  "losses": 4378,
+  "scratches": 123,
+  "accuracy": 50.37,
+  "net_per_stake": -601.45,
+  "profit_factor": 0.863,
+  "max_drawdown": -606.0,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(12, 34, 50, 14, (50, 70), 20, 4, 4, 0.0)",
+  "trades": 9020,
+  "wins": 4478,
+  "losses": 4418,
+  "scratches": 124,
+  "accuracy": 50.34,
+  "net_per_stake": -611.7,
+  "profit_factor": 0.862,
+  "max_drawdown": -614.5,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 12,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 34, 50, 14, (50, 70), 20, 4, 4, 0.0)",
+  "trades": 8988,
+  "wins": 4458,
+  "losses": 4402,
+  "scratches": 128,
+  "accuracy": 50.32,
+  "net_per_stake": -612.7,
+  "profit_factor": 0.861,
+  "max_drawdown": -615.8,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(8, 26, 68, 9, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8790,
+  "wins": 4368,
+  "losses": 4314,
+  "scratches": 108,
+  "accuracy": 50.31,
+  "net_per_stake": -601.2,
+  "profit_factor": 0.861,
+  "max_drawdown": -626.9,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 26,
+   "ema_trend": 68,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 34, 50, 9, (52, 72), 25, 4, 4, 0.0)",
+  "trades": 8712,
+  "wins": 4312,
+  "losses": 4267,
+  "scratches": 133,
+  "accuracy": 50.26,
+  "net_per_stake": -601.8,
+  "profit_factor": 0.859,
+  "max_drawdown": -604.6,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 25,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 34, 50, 14, (52, 72), 25, 4, 4, 0.0)",
+  "trades": 8672,
+  "wins": 4292,
+  "losses": 4248,
+  "scratches": 132,
+  "accuracy": 50.26,
+  "net_per_stake": -599.8,
+  "profit_factor": 0.859,
+  "max_drawdown": -602.6,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 25,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 34, 50, 14, (50, 70), 25, 4, 4, 0.0)",
+  "trades": 8780,
+  "wins": 4345,
+  "losses": 4304,
+  "scratches": 131,
+  "accuracy": 50.24,
+  "net_per_stake": -610.75,
+  "profit_factor": 0.858,
+  "max_drawdown": -613.55,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 25,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(8, 34, 50, 9, (50, 70), 20, 4, 4, 0.0)",
+  "trades": 8956,
+  "wins": 4436,
+  "losses": 4396,
+  "scratches": 124,
+  "accuracy": 50.23,
+  "net_per_stake": -625.4,
+  "profit_factor": 0.858,
+  "max_drawdown": -628.2,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(12, 34, 50, 9, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8975,
+  "wins": 4438,
+  "losses": 4412,
+  "scratches": 125,
+  "accuracy": 50.15,
+  "net_per_stake": -639.7,
+  "profit_factor": 0.855,
+  "max_drawdown": -644.25,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 12,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(12, 34, 50, 14, (50, 70), 25, 4, 4, 0.0)",
+  "trades": 8822,
+  "wins": 4360,
+  "losses": 4337,
+  "scratches": 125,
+  "accuracy": 50.13,
+  "net_per_stake": -631.0,
+  "profit_factor": 0.855,
+  "max_drawdown": -633.8,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 12,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 25,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 34, 50, 14, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8910,
+  "wins": 4401,
+  "losses": 4380,
+  "scratches": 129,
+  "accuracy": 50.12,
+  "net_per_stake": -639.15,
+  "profit_factor": 0.854,
+  "max_drawdown": -644.1,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 34, 50, 9, (52, 72), 15, 5, 2, 1.0)",
+  "trades": 4534,
+  "wins": 2249,
+  "losses": 2239,
+  "scratches": 46,
+  "accuracy": 50.11,
+  "net_per_stake": -327.35,
+  "profit_factor": 0.854,
+  "max_drawdown": -332.15,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 15,
+   "min_conditions": 5,
+   "cooldown": 2,
+   "body_min": 1.0
+  }
+ },
+ {
+  "label": "(8, 34, 50, 14, (50, 70), 25, 4, 4, 0.0)",
+  "trades": 8732,
+  "wins": 4311,
+  "losses": 4294,
+  "scratches": 127,
+  "accuracy": 50.1,
+  "net_per_stake": -629.65,
+  "profit_factor": 0.853,
+  "max_drawdown": -632.45,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 25,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 34, 50, 9, (50, 70), 20, 4, 4, 0.0)",
+  "trades": 8992,
+  "wins": 4441,
+  "losses": 4426,
+  "scratches": 125,
+  "accuracy": 50.08,
+  "net_per_stake": -651.15,
+  "profit_factor": 0.853,
+  "max_drawdown": -653.95,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(8, 34, 50, 14, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8873,
+  "wins": 4379,
+  "losses": 4366,
+  "scratches": 128,
+  "accuracy": 50.07,
+  "net_per_stake": -643.85,
+  "profit_factor": 0.853,
+  "max_drawdown": -646.95,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 14,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 26, 68, 14, (50, 70), 15, 4, 4, 0.0)",
+  "trades": 9179,
+  "wins": 4538,
+  "losses": 4528,
+  "scratches": 113,
+  "accuracy": 50.06,
+  "net_per_stake": -670.7,
+  "profit_factor": 0.852,
+  "max_drawdown": -674.65,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 26,
+   "ema_trend": 68,
+   "rsi_period": 14,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 15,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(12, 34, 50, 9, (52, 72), 25, 4, 4, 0.0)",
+  "trades": 8763,
+  "wins": 4319,
+  "losses": 4309,
+  "scratches": 135,
+  "accuracy": 50.06,
+  "net_per_stake": -637.85,
+  "profit_factor": 0.852,
+  "max_drawdown": -640.65,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 12,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 25,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(8, 26, 68, 14, (50, 70), 20, 4, 4, 0.0)",
+  "trades": 8853,
+  "wins": 4374,
+  "losses": 4365,
+  "scratches": 114,
+  "accuracy": 50.05,
+  "net_per_stake": -647.1,
+  "profit_factor": 0.852,
+  "max_drawdown": -663.85,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 26,
+   "ema_trend": 68,
+   "rsi_period": 14,
+   "rsi_zone": [
+    50,
+    70
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(8, 20, 68, 9, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8782,
+  "wins": 4335,
+  "losses": 4327,
+  "scratches": 120,
+  "accuracy": 50.05,
+  "net_per_stake": -642.25,
+  "profit_factor": 0.852,
+  "max_drawdown": -669.2,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 20,
+   "ema_trend": 68,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(8, 26, 68, 14, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8738,
+  "wins": 4314,
+  "losses": 4307,
+  "scratches": 117,
+  "accuracy": 50.04,
+  "net_per_stake": -640.1,
+  "profit_factor": 0.851,
+  "max_drawdown": -661.15,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 26,
+   "ema_trend": 68,
+   "rsi_period": 14,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 20, 68, 9, (52, 72), 20, 4, 4, 0.0)",
+  "trades": 8799,
+  "wins": 4342,
+  "losses": 4336,
+  "scratches": 121,
+  "accuracy": 50.03,
+  "net_per_stake": -645.3,
+  "profit_factor": 0.851,
+  "max_drawdown": -670.4,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 20,
+   "ema_trend": 68,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 20,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(10, 20, 68, 9, (52, 72), 25, 4, 4, 0.0)",
+  "trades": 8510,
+  "wins": 4196,
+  "losses": 4191,
+  "scratches": 123,
+  "accuracy": 50.03,
+  "net_per_stake": -624.4,
+  "profit_factor": 0.851,
+  "max_drawdown": -646.7,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 10,
+   "ema_slow": 20,
+   "ema_trend": 68,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 25,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ },
+ {
+  "label": "(8, 34, 50, 9, (52, 72), 25, 4, 4, 0.0)",
+  "trades": 8665,
+  "wins": 4271,
+  "losses": 4268,
+  "scratches": 126,
+  "accuracy": 50.02,
+  "net_per_stake": -637.65,
+  "profit_factor": 0.851,
+  "max_drawdown": -640.45,
+  "avg_conf": 0.0,
+  "combo": {
+   "ema_fast": 8,
+   "ema_slow": 34,
+   "ema_trend": 50,
+   "rsi_period": 9,
+   "rsi_zone": [
+    52,
+    72
+   ],
+   "adx_min": 25,
+   "min_conditions": 4,
+   "cooldown": 4,
+   "body_min": 0.0
+  }
+ }
+]

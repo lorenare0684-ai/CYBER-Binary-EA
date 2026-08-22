@@ -1,0 +1,262 @@
+{
+ "generated": "2026-08-22 09:53:36.878424+00:00",
+ "strategy": "NY-Close Seasonal (PUT 20-21 UTC, CALL 21-23 UTC, expiry 4 bars)",
+ "pairs": {
+  "GBPUSD_M15": {
+   "label": "",
+   "trades": 776,
+   "wins": 513,
+   "losses": 258,
+   "scratches": 5,
+   "accuracy": 66.54,
+   "net_per_stake": 178.05,
+   "profit_factor": 1.69,
+   "max_drawdown": -22.0,
+   "avg_conf": 0.0
+  },
+  "USDJPY_M15": {
+   "label": "",
+   "trades": 776,
+   "wins": 518,
+   "losses": 255,
+   "scratches": 3,
+   "accuracy": 67.01,
+   "net_per_stake": 185.3,
+   "profit_factor": 1.727,
+   "max_drawdown": -40.75,
+   "avg_conf": 0.0
+  },
+  "EURUSD_M15": {
+   "label": "",
+   "trades": 776,
+   "wins": 439,
+   "losses": 330,
+   "scratches": 7,
+   "accuracy": 57.09,
+   "net_per_stake": 43.15,
+   "profit_factor": 1.131,
+   "max_drawdown": -27.7,
+   "avg_conf": 0.0
+  },
+  "GBPUSD_M5": {
+   "label": "",
+   "trades": 2331,
+   "wins": 1433,
+   "losses": 880,
+   "scratches": 18,
+   "accuracy": 61.95,
+   "net_per_stake": 338.05,
+   "profit_factor": 1.384,
+   "max_drawdown": -89.05,
+   "avg_conf": 0.0
+  },
+  "USDJPY_M5": {
+   "label": "",
+   "trades": 2331,
+   "wins": 1373,
+   "losses": 937,
+   "scratches": 21,
+   "accuracy": 59.44,
+   "net_per_stake": 230.05,
+   "profit_factor": 1.246,
+   "max_drawdown": -58.65,
+   "avg_conf": 0.0
+  },
+  "EURUSD_M5": {
+   "label": "",
+   "trades": 2331,
+   "wins": 1339,
+   "losses": 959,
+   "scratches": 33,
+   "accuracy": 58.27,
+   "net_per_stake": 179.15,
+   "profit_factor": 1.187,
+   "max_drawdown": -55.3,
+   "avg_conf": 0.0
+  }
+ },
+ "walk_forward": {
+  "GBPUSD_M15": {
+   "Feb-Apr": {
+    "label": "",
+    "trades": 386,
+    "wins": 235,
+    "losses": 150,
+    "scratches": 1,
+    "accuracy": 61.04,
+    "net_per_stake": 49.75,
+    "profit_factor": 1.332,
+    "max_drawdown": -22.0,
+    "avg_conf": 0.0
+   },
+   "May-Jul": {
+    "label": "",
+    "trades": 384,
+    "wins": 277,
+    "losses": 103,
+    "scratches": 4,
+    "accuracy": 72.89,
+    "net_per_stake": 132.45,
+    "profit_factor": 2.286,
+    "max_drawdown": -8.45,
+    "avg_conf": 0.0
+   }
+  },
+  "USDJPY_M15": {
+   "Feb-Apr": {
+    "label": "",
+    "trades": 386,
+    "wins": 224,
+    "losses": 161,
+    "scratches": 1,
+    "accuracy": 58.18,
+    "net_per_stake": 29.4,
+    "profit_factor": 1.183,
+    "max_drawdown": -40.75,
+    "avg_conf": 0.0
+   },
+   "May-Jul": {
+    "label": "",
+    "trades": 384,
+    "wins": 289,
+    "losses": 93,
+    "scratches": 2,
+    "accuracy": 75.65,
+    "net_per_stake": 152.65,
+    "profit_factor": 2.641,
+    "max_drawdown": -5.0,
+    "avg_conf": 0.0
+   }
+  },
+  "EURUSD_M15": {
+   "Feb-Apr": {
+    "label": "",
+    "trades": 386,
+    "wins": 213,
+    "losses": 169,
+    "scratches": 4,
+    "accuracy": 55.76,
+    "net_per_stake": 12.05,
+    "profit_factor": 1.071,
+    "max_drawdown": -27.7,
+    "avg_conf": 0.0
+   },
+   "May-Jul": {
+    "label": "",
+    "trades": 384,
+    "wins": 226,
+    "losses": 155,
+    "scratches": 3,
+    "accuracy": 59.32,
+    "net_per_stake": 37.1,
+    "profit_factor": 1.239,
+    "max_drawdown": -18.15,
+    "avg_conf": 0.0
+   }
+  },
+  "GBPUSD_M5": {
+   "Feb-Apr": {
+    "label": "",
+    "trades": 1161,
+    "wins": 651,
+    "losses": 501,
+    "scratches": 9,
+    "accuracy": 56.51,
+    "net_per_stake": 52.35,
+    "profit_factor": 1.104,
+    "max_drawdown": -89.05,
+    "avg_conf": 0.0
+   },
+   "May-Jul": {
+    "label": "",
+    "trades": 1155,
+    "wins": 773,
+    "losses": 373,
+    "scratches": 9,
+    "accuracy": 67.45,
+    "net_per_stake": 284.05,
+    "profit_factor": 1.762,
+    "max_drawdown": -15.65,
+    "avg_conf": 0.0
+   }
+  },
+  "USDJPY_M5": {
+   "Feb-Apr": {
+    "label": "",
+    "trades": 1171,
+    "wins": 637,
+    "losses": 529,
+    "scratches": 5,
+    "accuracy": 54.63,
+    "net_per_stake": 12.45,
+    "profit_factor": 1.024,
+    "max_drawdown": -58.65,
+    "avg_conf": 0.0
+   },
+   "May-Jul": {
+    "label": "",
+    "trades": 1155,
+    "wins": 734,
+    "losses": 406,
+    "scratches": 15,
+    "accuracy": 64.39,
+    "net_per_stake": 217.9,
+    "profit_factor": 1.537,
+    "max_drawdown": -12.05,
+    "avg_conf": 0.0
+   }
+  },
+  "EURUSD_M5": {
+   "Feb-Apr": {
+    "label": "",
+    "trades": 1162,
+    "wins": 647,
+    "losses": 502,
+    "scratches": 13,
+    "accuracy": 56.31,
+    "net_per_stake": 47.95,
+    "profit_factor": 1.096,
+    "max_drawdown": -55.3,
+    "avg_conf": 0.0
+   },
+   "May-Jul": {
+    "label": "",
+    "trades": 1155,
+    "wins": 688,
+    "losses": 447,
+    "scratches": 20,
+    "accuracy": 60.62,
+    "net_per_stake": 137.8,
+    "profit_factor": 1.308,
+    "max_drawdown": -18.0,
+    "avg_conf": 0.0
+   }
+  }
+ },
+ "months": {
+  "GBPUSD_M15": {
+   "2026-02": 49.2,
+   "2026-03": 54.4,
+   "2026-04": 78.0,
+   "2026-05": 77.8,
+   "2026-06": 66.7,
+   "2026-07": 69.7
+  },
+  "USDJPY_M15": {
+   "2026-02": 42.4,
+   "2026-03": 64.0,
+   "2026-04": 65.9,
+   "2026-05": 80.2,
+   "2026-06": 72.0,
+   "2026-07": 74.2
+  },
+  "EURUSD_M15": {
+   "2026-02": 45.8,
+   "2026-03": 51.5,
+   "2026-04": 67.4,
+   "2026-05": 62.7,
+   "2026-06": 49.2,
+   "2026-07": 62.1
+  }
+ }
+}

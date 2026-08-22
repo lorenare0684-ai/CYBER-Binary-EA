@@ -1,0 +1,7 @@
+# raw market data (regenerable via backtest/download_data.py)
+backtest/data/
+backtest/zips/
+
+# python caches
+__pycache__/
+*.pyc

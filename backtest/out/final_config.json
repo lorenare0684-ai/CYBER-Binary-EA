@@ -1,0 +1,74 @@
+{
+ "GBPUSD_M15": {
+  "label": "",
+  "trades": 776,
+  "wins": 513,
+  "losses": 258,
+  "scratches": 5,
+  "accuracy": 66.54,
+  "net_per_stake": 178.05,
+  "profit_factor": 1.69,
+  "max_drawdown": -22.0,
+  "avg_conf": 0.0
+ },
+ "USDJPY_M15": {
+  "label": "",
+  "trades": 776,
+  "wins": 518,
+  "losses": 255,
+  "scratches": 3,
+  "accuracy": 67.01,
+  "net_per_stake": 185.3,
+  "profit_factor": 1.727,
+  "max_drawdown": -40.75,
+  "avg_conf": 0.0
+ },
+ "EURUSD_M15": {
+  "label": "",
+  "trades": 776,
+  "wins": 439,
+  "losses": 330,
+  "scratches": 7,
+  "accuracy": 57.09,
+  "net_per_stake": 43.15,
+  "profit_factor": 1.131,
+  "max_drawdown": -27.7,
+  "avg_conf": 0.0
+ },
+ "GBPUSD_M5": {
+  "label": "",
+  "trades": 2331,
+  "wins": 1433,
+  "losses": 880,
+  "scratches": 18,
+  "accuracy": 61.95,
+  "net_per_stake": 338.05,
+  "profit_factor": 1.384,
+  "max_drawdown": -89.05,
+  "avg_conf": 0.0
+ },
+ "USDJPY_M5": {
+  "label": "",
+  "trades": 2331,
+  "wins": 1373,
+  "losses": 937,
+  "scratches": 21,
+  "accuracy": 59.44,
+  "net_per_stake": 230.05,
+  "profit_factor": 1.246,
+  "max_drawdown": -58.65,
+  "avg_conf": 0.0
+ },
+ "EURUSD_M5": {
+  "label": "",
+  "trades": 2331,
+  "wins": 1339,
+  "losses": 959,
+  "scratches": 33,
+  "accuracy": 58.27,
+  "net_per_stake": 179.15,
+  "profit_factor": 1.187,
+  "max_drawdown": -55.3,
+  "avg_conf": 0.0
+ }
+}
