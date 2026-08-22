@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.31"
+#property version   "1.32"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -53,6 +53,8 @@
 //--- refreshing the panel never touches the drawn arrows)
 #define PANEL_PREFIX "CYBER_PANEL_"
 #define MARKER_PREFIX "CYBER_MARK_"
+#define MAX_ARROWS    500      // ring buffer of on-chart signal arrows
+#define MAX_HISTORY   250      // historical arrows redrawn on attach (from CSV)
 
 //--- statistics file format version (bump when the CSV layout changes)
 //--- string on purpose: it is compared to a FileReadString() value, and MQL5
@@ -128,7 +130,7 @@ input bool   ShowPanel            = true;        // Show on-chart dashboard pane
 input bool   AutoOpenDashboard    = true;        // Auto-open HTML dashboard in browser
 input string DashboardFile        = "CYBER_Binary_Dashboard.html"; // HTML dashboard file name
 input int    RefreshSeconds       = 5;           // Dashboard refresh interval (seconds)
-input int    PanelCorner          = 3;           // Panel corner (3 = right-top)
+input int    PanelCorner          = 3;           // Panel corner (0=TL, 1=TR, 2=BL, 3=BR)
 
 input group "=== Alerts ==="
 input bool   AlertOnSignal        = true;        // Show Alert() popup on new signal
@@ -259,6 +261,7 @@ int OnInit()
 
    g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
    g_initOk      = true;
+   DrawHistoryMarkers();
    UpdatePanel();
 
    string mode = EnableMicroRule ? "Micro-Fix (NY " + IntegerToString(MicroPutStartMin / 60) + ":" +
@@ -737,30 +740,54 @@ void ResolvePending()
 
 //+------------------------------------------------------------------+
 //| Chart painting: arrows + visible signal details on the chart      |
+//|                                                                  |
+//| NON-REPAINTING by construction: every arrow is created ONCE at   |
+//| the fixed time/price of a closed bar and never moved or updated. |
+//| PUT arrows sit ABOVE the signal bar, CALL arrows BELOW it, so    |
+//| they are never hidden behind candles.                            |
 //+------------------------------------------------------------------+
-void DrawSignalArrow(datetime time, double price, int dir, int rule)
+double ArrowY(datetime time, double entry, int dir)
   {
-   string name = StringFormat("%sARROW_%d", MARKER_PREFIX, g_arrowCount % 200);
+   int shift = iBarShift(_Symbol, PERIOD_CURRENT, time, false);
+   if(shift < 0)
+      return(entry);
+   double hi = iHigh(_Symbol, PERIOD_CURRENT, shift);
+   double lo = iLow(_Symbol, PERIOD_CURRENT, shift);
+   double gap = MathMax(3.0 * _Point, (hi - lo) * 0.35);
+   if(dir > 0)
+      return(lo - gap);          // CALL: arrow below the bar, pointing up
+   return(hi + gap);             // PUT:  arrow above the bar, pointing down
+  }
+
+void DrawArrowObject(string name, datetime time, double entry, int dir, string tooltip)
+  {
    if(ObjectFind(0, name) >= 0)
       ObjectDelete(0, name);
+   double y = ArrowY(time, entry, dir);
    color clr = (dir > 0) ? clrLime : clrOrangeRed;
-   if(ObjectCreate(0, name, (dir > 0) ? OBJ_ARROW_UP : OBJ_ARROW_DOWN, 0, time, price))
+   if(ObjectCreate(0, name, (dir > 0) ? OBJ_ARROW_UP : OBJ_ARROW_DOWN, 0, time, y))
      {
       ObjectSetInteger(0, name, OBJPROP_COLOR, clr);
-      ObjectSetInteger(0, name, OBJPROP_WIDTH, 2);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 3);
       ObjectSetInteger(0, name, OBJPROP_BACK, false);
-      ObjectSetString(0, name, OBJPROP_TOOLTIP,
-                      StringFormat("%s %s | %s", (dir > 0) ? "CALL" : "PUT", _Symbol,
-                                   (rule == RULE_MICRO) ? "Micro-Fix" :
-                                   ((rule == RULE_SEASONAL) ? "NY-Close Seasonal" : "Burst Reversal")));
+      ObjectSetString(0, name, OBJPROP_TOOLTIP, tooltip);
      }
+  }
+
+void DrawSignalArrow(datetime time, double entry, int dir, int rule)
+  {
+   string name = StringFormat("%sARROW_%d", MARKER_PREFIX, g_arrowCount % MAX_ARROWS);
+   string tip = StringFormat("%s %s | %s", (dir > 0) ? "CALL" : "PUT", _Symbol,
+                             (rule == RULE_MICRO) ? "Micro-Fix" :
+                             ((rule == RULE_SEASONAL) ? "NY-Close Seasonal" : "Burst Reversal"));
+   DrawArrowObject(name, time, entry, dir, tip);
    g_arrowCount++;
   }
 
 //--- visible text label next to the signal arrow (direction, rule, expiry)
-void DrawSignalLabel(datetime time, double price, int dir, datetime expiry, int rule)
+void DrawSignalLabel(datetime time, double entry, int dir, datetime expiry, int rule)
   {
-   string name = StringFormat("%sLBL_%d", MARKER_PREFIX, (g_arrowCount - 1) % 200);
+   string name = StringFormat("%sLBL_%d", MARKER_PREFIX, (g_arrowCount - 1) % MAX_ARROWS);
    if(ObjectFind(0, name) >= 0)
       ObjectDelete(0, name);
    color clr = (dir > 0) ? clrLime : clrOrangeRed;
@@ -770,17 +797,69 @@ void DrawSignalLabel(datetime time, double price, int dir, datetime expiry, int 
    string txt = StringFormat("%s %s | exp %s | %.5g",
                              side, ruleTxt,
                              TimeToString(expiry, TIME_MINUTES),
-                             price);
-   if(ObjectCreate(0, name, OBJ_TEXT, 0, time, price))
+                             entry);
+   if(ObjectCreate(0, name, OBJ_TEXT, 0, time, ArrowY(time, entry, dir)))
      {
       ObjectSetString(0, name, OBJPROP_TEXT, txt);
       ObjectSetInteger(0, name, OBJPROP_COLOR, clr);
       ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 9);
       ObjectSetString(0, name, OBJPROP_FONT, "Consolas");
-      ObjectSetInteger(0, name, OBJPROP_ANCHOR, ANCHOR_LEFT_UPPER);
+      //--- PUT arrow sits above the bar -> label grows upward;
+      //--- CALL arrow sits below the bar -> label grows downward
+      ObjectSetInteger(0, name, OBJPROP_ANCHOR, (dir > 0) ? ANCHOR_LEFT_UPPER : ANCHOR_LEFT_LOWER);
       ObjectSetInteger(0, name, OBJPROP_BACK, false);
       ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
       ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+     }
+  }
+
+//--- redraw stored signals as arrows right after attach (fixed positions,
+//--- loaded from the CSV -> fully non-repainting history on the chart)
+void DrawHistoryMarkers()
+  {
+   ObjectsDeleteAll(0, MARKER_PREFIX + "H");
+   int n = ArraySize(g_trades);
+   if(n == 0)
+      return;
+   int shown = 0;
+   for(int i = n - 1; i >= 0 && shown < MAX_HISTORY; i--, shown++)
+     {
+      TradeRec t = g_trades[i];
+      string side = (t.direction > 0) ? "CALL" : "PUT";
+      string name = StringFormat("%sH_%d", MARKER_PREFIX, shown);
+      string tip = StringFormat("%s %s | %s", side, _Symbol,
+                                (t.rule == RULE_MICRO) ? "Micro-Fix" :
+                                ((t.rule == RULE_SEASONAL) ? "NY-Close Seasonal" : "Burst Reversal"));
+      DrawArrowObject(name, t.time, t.entry, t.direction, tip);
+      //--- labels for the 3 most recent signals only (keeps the chart clean)
+      if(shown < 3)
+        {
+         string lbl = StringFormat("%sH_LBL_%d", MARKER_PREFIX, shown);
+         if(ObjectFind(0, lbl) >= 0)
+            ObjectDelete(0, lbl);
+         color clr = (t.direction > 0) ? clrLime : clrOrangeRed;
+         string txt = StringFormat("%s | exp %s | %.5g", side,
+                                   TimeToString(t.expiry, TIME_MINUTES), t.entry);
+         if(ObjectCreate(0, lbl, OBJ_TEXT, 0, t.time, ArrowY(t.time, t.entry, t.direction)))
+           {
+            ObjectSetString(0, lbl, OBJPROP_TEXT, txt);
+            ObjectSetInteger(0, lbl, OBJPROP_COLOR, clr);
+            ObjectSetInteger(0, lbl, OBJPROP_FONTSIZE, 9);
+            ObjectSetString(0, lbl, OBJPROP_FONT, "Consolas");
+            ObjectSetInteger(0, lbl, OBJPROP_ANCHOR,
+                             (t.direction > 0) ? ANCHOR_LEFT_UPPER : ANCHOR_LEFT_LOWER);
+            ObjectSetInteger(0, lbl, OBJPROP_BACK, false);
+            ObjectSetInteger(0, lbl, OBJPROP_SELECTABLE, false);
+            ObjectSetInteger(0, lbl, OBJPROP_HIDDEN, true);
+           }
+        }
+     }
+   //--- restore entry/expiry lines for a still-pending trade after restart
+   TradeRec last = g_trades[n - 1];
+   if(last.result == TR_PENDING)
+     {
+      DrawEntryPriceLine(last.entry, last.direction);
+      DrawExpiryLine(last.expiry, last.direction);
      }
   }
 
@@ -1207,6 +1286,18 @@ void UpdatePanel()
 
    int panelH = lineCount * lineH + baseFont + 12;
 
+   //--- the last-signal panel is stacked ABOVE this panel: shrink the font
+   //--- until both fit inside the chart window (no lines ever cut off)
+   int lsMaxLines = 6;
+   int lsH = lsMaxLines * lineH + baseFont + 12;
+   while(panelH + lsH + 6 + 2 * margin > chartH && baseFont > 6)
+     {
+      baseFont--;
+      lineH = baseFont + 7;
+      panelH = lineCount * lineH + baseFont + 12;
+      lsH = lsMaxLines * lineH + baseFont + 12;
+     }
+
    //--- background rectangle
    string bgName = PANEL_PREFIX + "BG";
    ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
@@ -1245,8 +1336,9 @@ void UpdatePanel()
       ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
      }
 
-   //--- last-signal detail panel (bottom-left), scales with the window
-   DrawLastSignalPanel(chartW, chartH, baseFont);
+   //--- last-signal detail panel, stacked ABOVE the stats panel (same
+   //--- corner, offset by the stats panel height -> never overlaps)
+   DrawLastSignalPanel(chartW, chartH, baseFont, margin + panelH + 6, panelW);
 
    ChartRedraw(0);
   }
@@ -1254,7 +1346,7 @@ void UpdatePanel()
 //+------------------------------------------------------------------+
 //| "Last signal" detail panel (bottom-left of the chart)             |
 //+------------------------------------------------------------------+
-void DrawLastSignalPanel(int chartW, int chartH, int baseFont)
+void DrawLastSignalPanel(int chartW, int chartH, int baseFont, int yOffset, int panelW)
   {
    string prefix = PANEL_PREFIX + "LS_";
    ObjectsDeleteAll(0, prefix);
@@ -1298,15 +1390,14 @@ void DrawLastSignalPanel(int chartW, int chartH, int baseFont)
       lines[lineCount++] = "Result: " + resTxt;
    lines[lineCount++] = "Signal " + TimeToString(t.time, TIME_DATE | TIME_MINUTES);
 
-   int panelW = MathMax(240, chartW / 5);
    int panelH = lineCount * lineH + baseFont + 12;
 
-   //--- background (bottom-left corner = 2)
+   //--- background (same corner as the main panel, stacked above it)
    string bgName = prefix + "BG";
    ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
-   ObjectSetInteger(0, bgName, OBJPROP_CORNER, 2);
+   ObjectSetInteger(0, bgName, OBJPROP_CORNER, PanelCorner);
    ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, margin);
-   ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, margin);
+   ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, yOffset);
    ObjectSetInteger(0, bgName, OBJPROP_XSIZE, panelW);
    ObjectSetInteger(0, bgName, OBJPROP_YSIZE, panelH);
    ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, C'13,20,36');
@@ -1320,9 +1411,9 @@ void DrawLastSignalPanel(int chartW, int chartH, int baseFont)
      {
       string name = StringFormat("%sTXT_%d", prefix, i);
       ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
-      ObjectSetInteger(0, name, OBJPROP_CORNER, 2);
+      ObjectSetInteger(0, name, OBJPROP_CORNER, PanelCorner);
       ObjectSetInteger(0, name, OBJPROP_XDISTANCE, margin + 8);
-      ObjectSetInteger(0, name, OBJPROP_YDISTANCE, margin + baseFont + 4 + i * lineH);
+      ObjectSetInteger(0, name, OBJPROP_YDISTANCE, yOffset + baseFont + 4 + i * lineH);
       ObjectSetInteger(0, name, OBJPROP_FONTSIZE, baseFont);
       ObjectSetString(0, name, OBJPROP_FONT, "Consolas");
       color txtColor = clrSilver;

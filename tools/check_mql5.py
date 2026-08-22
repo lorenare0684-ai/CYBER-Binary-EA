@@ -418,7 +418,7 @@ def collect_declared(src, code):
                 declared.add(t[-1])
 
     # struct-typed / custom-typed declarations: NAME [&] NAME = ... or ;
-    for m in re.finditer(r"(?:^|[;{])\s*([A-Za-z_]\w*)\s*(?:&\s*)?([A-Za-z_]\w*)\s*(?:=|;|,|\[|\))", code):
+    for m in re.finditer(r"(?m)(?:^|[;{])\s*([A-Za-z_]\w*)\s*(?:&\s*)?([A-Za-z_]\w*)\s*(?:=|;|,|\[|\))", code):
         declared.add(m.group(2))
 
     return declared

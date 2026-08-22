@@ -102,6 +102,16 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    the chart window. Statistics survive restarts (stored in
    `MQL5\Files\CYBER_Binary_EA_trades.csv`).
 
+   **On-chart signals (non-repainting):** arrows are drawn once at the fixed
+   time/price of the closed signal bar and never move. PUT arrows sit above
+   the bar, CALL arrows below it (never hidden by candles), each with a
+   visible label (direction, rule, expiry, entry), an entry-price line and an
+   expiry line. On attach, the EA also **redraws up to 250 past signals from
+   its statistics file** as fixed arrows, so you see the history immediately.
+   The two panels (stats + last-signal with countdown) are stacked at the same
+   corner so they never overlap, and the font auto-shrinks so every line
+   always fits the window.
+
 ## Using the signals on Quotex
 
 1. When an arrow appears (or an Alert pops), open the same asset on Quotex.
