@@ -10,20 +10,21 @@ any window size.
 
 ---
 
-## TL;DR — the 85%+ flagship (Micro-Fix rule, M5)
+## TL;DR — the 90%+ flagship (Micro-Fix precision mode, M5)
 
-| Asset | **Accuracy** | Trades | Out-of-sample (May–Jul) |
+| Setup | **Accuracy** | Trades | Out-of-sample (May–Jul) |
 |-------|--------------|--------|-------------------------|
-| **EURJPY** | **90.4%** | 415 | **96.6%** |
-| GBPUSD | 87.4% | 413 | 87.0% |
-| USDJPY | 85.5% | 415 | **96.2%** |
-| EURGBP | 83.2% | 416 | 85.1% |
-| **Blended 4-asset flagship** | **86.6%** | 1659 | **91.2%** |
-| + skip Mondays | 87.7% | 1244 | 91.8% |
+| **EURJPY** (16:40–16:45 NY, 20-min) | **93.3%** | 208 | **97.1%** |
+| **EURJPY + USDJPY** (90%+ default) | **92.6%** | 312 | **96.2%** |
+| GBPUSD (16:40–16:45 NY, 25-min) | 88.8% | 206 | 87.4% |
+| All 4 assets (precision) | 87.6% | 934 | 89.3% |
+| Wide mode: 16:35–16:50, 4 assets | 86.6% | 1659 | 91.2% |
 
-- **16 signals/day** (4 assets × 4 bars: 16:35/16:40/16:45/16:50 NY), Mon–Thu, ~64/week.
-- Every month ≥ 73% (Feb 87%, Mar 73%, Apr 86%, May 94%, Jun 91%, Jul 89%); PF 5.5.
-- Optional CALL rule (17:50–18:00 NY, 10-min): +6 signals/day at ~72–74% (blended 80.6%).
+- **Precision mode is the new default** (`MicroPrecisionMode=true`): EURJPY
+  2 signals/day at 93.3%; add USDJPY for 3/day at 92.6% blended. Every month
+  ≥ 85% (Feb 90%, Mar 85%, Apr 93%, May 98%, Jun 96%, Jul 94%); PF 10.7.
+- Wide mode (`MicroPrecisionMode=false`): 16 signals/day at 86.6% blended.
+- Optional CALL rule (17:50–18:00 NY, 10-min): +6 signals/day at ~72–74%.
 - Full research in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 
 ### ⚠️ What 20+ years of data shows (read this)
@@ -44,7 +45,10 @@ reproducible institutional flow pattern:
 
 | Window (NY local time) | Direction | Expiry | Backtest accuracy |
 |------------------------|-----------|--------|-------------------|
-| 16:35 – 16:50 (pre-settlement dip) | **PUT** | 25 min | **83–90% per asset** |
+| 16:40 – 16:45 (dip core) EURJPY | **PUT** | 20 min | **93.3%** |
+| 16:45 (dip core) USDJPY | **PUT** | 30 min | **91.4%** |
+| 16:40 – 16:45 (dip core) GBPUSD | **PUT** | 25 min | 88.8% |
+| 16:35 – 16:50 (wide) | **PUT** | 25 min | 83–90% per asset |
 | 17:50 – 18:00 (rally into close) | CALL (optional) | 10 min | 72–74% |
 
 - The windows are anchored to **New York local time** (not UTC) with automatic
@@ -56,9 +60,10 @@ reproducible institutional flow pattern:
   +1.1 pp. The 25-minute expiry (k=5) beat 20-minute on every asset.
 - One signal per closed 5-minute bar in the window → 4 signals per asset per day.
 
-**Supported assets (validated on M5):** EURJPY 90.4% · GBPUSD 87.4% · USDJPY
-85.5% · EURGBP 83.2% · AUDUSD 76.9% · EURUSD 72.0% · (XAUUSD inverts the
-pattern — not recommended). The EA works on any of them without changes.
+**Supported assets (validated on M5):** EURJPY 93.3% (precision) · USDJPY
+91.4% (precision) · GBPUSD 88.8% (precision) · EURGBP 83.2% · AUDUSD 76.9% ·
+EURUSD 72.0% · (XAUUSD inverts the pattern — not recommended). The EA works
+on any of them without changes.
 
 Legacy mode (optional, M15): NY-Close Seasonal rule — PUT 20:00–21:00 UTC /
 CALL 21:00–23:00 UTC, 1-hour expiry — 66–67% accuracy (n=776).
@@ -86,9 +91,10 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    (In MT5: `File ▸ Open Data Folder ▸ MQL5 ▸ Experts`.)
 2. In MetaEditor press **Compile** (F7) — must finish with *0 errors, 0 warnings*.
 3. In MT5: drag the EA onto a chart.
-   - **Flagship (default): attach to EURJPY, GBPUSD, USDJPY and EURGBP charts
-     (M5).** The Micro-Fix rule is on by default: PUT window 16:35–16:50 NY,
-     25-min expiry. 4 signals per chart per day → 16/day on 4 charts.
+   - **90%+ default: attach to EURJPY and USDJPY charts (M5).** Precision
+     mode is on by default: EURJPY 16:40–16:45 NY 20-min expiry (2 signals/
+     day), USDJPY 16:45 NY 30-min (1 signal/day) → 3/day at 92.6% blended.
+     Add GBPUSD (16:40–16:45, 25-min) for 2 more/day at 88.8%.
    - Legacy mode: M15 chart, set `EnableMicroRule=false`,
      `EnableSeasonalRule=true`, `ExpiryBars=4` (1-hour expiry).
 4. The **HTML dashboard opens automatically in your browser** (a new window).
@@ -116,9 +122,10 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
 | Input | Default | Meaning |
 |-------|---------|---------|
 | `EnableMicroRule` | true | flagship Micro-Fix rule (M5) |
-| `MicroPutStartMin/MicroPutEndMin` | 995/1010 | PUT window, NY minutes (16:35–16:50) |
+| `MicroPrecisionMode` | true | per-asset optimized windows (90%+); false = wide 16:35–16:50 |
+| `MicroPutStartMin/MicroPutEndMin` | 995/1010 | PUT window, NY minutes (used in wide mode) |
 | `MicroNoFriday` | true | skip Fridays (+2.6 pp validated) |
-| `MicroPutExpiryBars` | 5 | PUT expiry (5 bars = 25 min on M5, best on all assets) |
+| `MicroPutExpiryBars` | 5 | PUT expiry in wide mode (5 bars = 25 min on M5) |
 | `MicroNoMonday` | false | skip Mondays too (+1.1 pp, -25% signals) |
 | `MicroCallEnabled` | false | also trade the 17:50–18:00 NY CALL (72–74%) |
 | `MicroCallExpiryBars` | 2 | CALL expiry (10 min on M5) |

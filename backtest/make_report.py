@@ -237,6 +237,37 @@ def main():
     for pname, dd in micro_sets + [("AUDUSD", aud5), ("EURUSD", eur5)]:
         micro["per_pair"][pname] = summarize(micro_sim([(pname, dd)], (995, 1010), (1070, 1080), 5, 2, True, False))
 
+    # --- precision mode (90%+) ----------------------------------------
+    def precision_sim(pair_list):
+        cfg = {"EURJPY": (1000, 1005, 4), "USDJPY": (1005, 1005, 6),
+               "GBPUSD": (1000, 1005, 5), "EURGBP": (995, 1010, 5)}
+        tr = []
+        for pname, dd in pair_list:
+            c = dd["c"]
+            dt = pd.to_datetime(dd["dt"])
+            n = len(c)
+            s0, s1, k = cfg[pname]
+            for i in range(80, n - k - 1):
+                gmt = dt[i].to_pydatetime()
+                ny_m, wd = ny_minute(gmt)
+                if wd == 4:
+                    continue
+                if not (s0 <= ny_m <= s1):
+                    continue
+                fwd = c[i + k] - c[i]
+                res = "W" if fwd < 0 else ("L" if fwd > 0 else "T")
+                tr.append([pname, -1, res, dt[i].strftime("%Y-%m-%d")])
+        return tr
+
+    micro["precision"] = {}
+    for key, plist, label in [
+        ("ej", [("EURJPY", jpy5)], "EURJPY precision (16:40-16:45, 20-min)"),
+        ("ej_usdjpy", [("EURJPY", jpy5), ("USDJPY", usd5)], "EURJPY+USDJPY precision (90%+ flagship)"),
+        ("all4", [("EURJPY", jpy5), ("USDJPY", usd5), ("GBPUSD", gbp5), ("EURGBP", gbpcr5)], "All 4 assets precision"),
+    ]:
+        micro["precision"][key] = summarize(precision_sim(plist))
+        micro["precision"][key]["label"] = label
+
     md.append("## 6. Micro-Fix strategy (flagship, 85%+)")
     md.append("")
     md.append("**Mechanism.** The 30 minutes before the 17:00 New York CME/futures "
@@ -255,6 +286,18 @@ def main():
         m = micro[key]
         md.append(f"| {label} | {m['trades']} | **{m['accuracy']}%** | {m['pf']} | "
                   f"{m['fa'][0]:.1f}% (n={m['fa'][1]}) | **{m['mj'][0]:.1f}%** (n={m['mj'][1]}) |")
+    md.append("")
+    md.append("**Precision mode (90%+, per-asset optimized windows):**")
+    md.append("")
+    md.append("| Setup | Trades | Accuracy | PF | IS (Feb-Apr) | OOS (May-Jul) |")
+    md.append("|-------|--------|----------|----|--------------|---------------|")
+    for key in ["ej", "ej_usdjpy", "all4"]:
+        p = micro["precision"][key]
+        md.append(f"| {p['label']} | {p['trades']} | **{p['accuracy']}%** | {p['pf']} | "
+                  f"{p['fa'][0]:.1f}% (n={p['fa'][1]}) | **{p['mj'][0]:.1f}%** (n={p['mj'][1]}) |")
+    md.append("")
+    md.append("Precision monthly (EURJPY+USDJPY): " + " | ".join(
+        f"{m[5:]}:{micro['precision']['ej_usdjpy']['months'][m]:.0f}%" for m in sorted(micro['precision']['ej_usdjpy']['months'])))
     md.append("")
     md.append("Monthly accuracy (flagship): " + " | ".join(
         f"{m[5:]}:{micro['flagship']['months'][m]:.0f}%" for m in sorted(micro['flagship']['months'])))

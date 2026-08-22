@@ -55,29 +55,30 @@ def main():
     wc = micro["with_call"]
     all_days = micro["all_days"]
     pp = micro["per_pair"]
+    pr = micro["precision"]
 
     html = ["<!DOCTYPE html><html><head><meta charset='utf-8'>",
             "<title>CYBER Binary EA - Quotex Signal Dashboard (demo)</title>",
             "<style>", CSS, "</style></head><body><div class='wrap'>"]
     html.append("<h1>CYBER Binary EA<span class='sub'>Quotex signal dashboard &middot; "
                 "<b>DEMO - backtest data</b> &middot; generated " + d["generated"] +
-                " &middot; <span class='badge'>Micro-Fix flagship: 86.6%</span></span></h1>")
+                " &middot; <span class='badge'>Micro-Fix precision: 92.6%</span></span></h1>")
     html.append("<div class='grid'>")
-    html.append(card("Accuracy (flagship)",
-                     f"<span class='acc'>{fl['accuracy']}%</span>",
-                     "big", "PUT 16:35-16:50 NY &middot; 25-min expiry &middot; 4 assets &middot; no Fridays"))
+    html.append(card("Accuracy (precision)",
+                     f"<span class='acc'>{pr['ej_usdjpy']['accuracy']}%</span>",
+                     "big", "EURJPY+USDJPY &middot; per-asset windows &middot; no Fridays"))
     html.append(card("Wins / Losses",
-                     f"<span class='win'>{fl['wins']}</span> / <span class='loss'>{fl['losses']}</span>",
-                     "num", f"n={fl['trades']} &middot; 6 months (Feb-Jul 2026)"))
+                     f"<span class='win'>{pr['ej_usdjpy']['wins']}</span> / <span class='loss'>{pr['ej_usdjpy']['losses']}</span>",
+                     "num", f"n={pr['ej_usdjpy']['trades']} &middot; 6 months (Feb-Jul 2026)"))
     html.append(card("Net P&amp;L",
-                     f"<span class='win'>+{fl['wins']*0.85-fl['losses']:.2f}</span>",
+                     f"<span class='win'>+{pr['ej_usdjpy']['wins']*0.85-pr['ej_usdjpy']['losses']:.2f}</span>",
                      "num", "per 1.0 stake @ 85% payout"))
-    html.append(card("Profit factor", f"<span class='gold'>{fl['pf']}</span>",
-                     "num", "worst month " + str(min(fl['months'].values())) + "%"))
-    html.append(card("Out-of-sample", f"<span class='acc'>{fl['mj'][0]:.1f}%</span>",
-                     "num", f"May-Jul &middot; n={fl['mj'][1]} (untouched params)"))
-    html.append(card("Signals / day", f"<span class='num'>16</span>",
-                     "num", "4 assets &times; 4 bars &middot; Mon-Thu"))
+    html.append(card("Profit factor", f"<span class='gold'>{pr['ej_usdjpy']['pf']}</span>",
+                     "num", "worst month " + str(min(pr['ej_usdjpy']['months'].values())) + "%"))
+    html.append(card("Out-of-sample", f"<span class='acc'>{pr['ej_usdjpy']['mj'][0]:.1f}%</span>",
+                     "num", f"May-Jul &middot; n={pr['ej_usdjpy']['mj'][1]} (untouched params)"))
+    html.append(card("Signals / day", f"<span class='num'>3</span>",
+                     "num", "EURJPY x2 + USDJPY x1 &middot; Mon-Thu"))
     html.append(card("Skip Mondays", f"<span class='acc'>{no_mon['accuracy']}%</span>",
                      "num", f"n={no_mon['trades']} &middot; +1.1 pp"))
     html.append(card("With CALL rule", f"<span class='acc'>{wc['accuracy']}%</span>",

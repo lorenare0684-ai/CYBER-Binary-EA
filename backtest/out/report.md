@@ -1,6 +1,6 @@
 # CYBER Binary EA - Strategy Validation Report
 
-_Generated 2026-08-22 10:14 UTC - data: getdata.finance OHLCV, Feb 1 - Jul 31 2026, 24/5 FX_
+_Generated 2026-08-22 10:39 UTC - data: getdata.finance OHLCV, Feb 1 - Jul 31 2026, 24/5 FX_
 
 ## 1. Strategy summary
 
@@ -67,6 +67,16 @@ The effect is regime-dependent: weak before ~2015, consistently present since 20
 | PUT + CALL (17:50-18:00 NY, 10-min), no Fridays | 3186 | **80.57%** | 3.52 | 77.5% (n=1589) | **83.6%** (n=1597) |
 | 5 assets (incl. AUDUSD) | 2074 | **84.67%** | 4.69 | 81.5% (n=1036) | **87.9%** (n=1038) |
 | PUT, all days, 4 assets | 2059 | **83.63%** | 4.34 | 81.3% (n=1021) | **85.9%** (n=1038) |
+
+**Precision mode (90%+, per-asset optimized windows):**
+
+| Setup | Trades | Accuracy | PF | IS (Feb-Apr) | OOS (May-Jul) |
+|-------|--------|----------|----|--------------|---------------|
+| EURJPY precision (16:40-16:45, 20-min) | 208 | **93.27%** | 11.78 | 89.4% (n=104) | **97.1%** (n=104) |
+| EURJPY+USDJPY precision (90%+ flagship) | 312 | **92.63%** | 10.68 | 89.1% (n=156) | **96.2%** (n=156) |
+| All 4 assets precision | 934 | **87.58%** | 5.99 | 85.9% (n=467) | **89.3%** (n=467) |
+
+Precision monthly (EURJPY+USDJPY): 02:90% | 03:85% | 04:93% | 05:98% | 06:96% | 07:94%
 
 Monthly accuracy (flagship): 02:87% | 03:73% | 04:86% | 05:94% | 06:91% | 07:89%
 

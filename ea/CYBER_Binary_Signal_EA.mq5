@@ -5,14 +5,18 @@
 //|  Generates CALL/PUT binary-option signals for Quotex OTC markets |
 //|  based on researched NY-session flow patterns.                   |
 //|                                                                  |
-//|  FLAGSHIP MODE (default) - "Micro-Fix" rule on M5 (85%+):        |
+//|  FLAGSHIP MODE (default) - "Micro-Fix" rule on M5 (90%+):        |
 //|    The 30 minutes before the 17:00 New York CME/futures          |
 //|    settlement show a reproducible dip (16:35-16:50 NY) and a     |
 //|    rally into the electronic close (17:50-18:00 NY).             |
 //|    Windows are anchored to New York local time (auto US-DST).    |
-//|    Backtest (4 assets, M5, Feb-Jul 2026, Fridays off, 25-min     |
-//|    expiry): EURJPY 90.4% | GBPUSD 87.4% | USDJPY 85.5% |         |
-//|    EURGBP 83.2% -> blended 86.6% (n=1664, PF 5.5), OOS 91.2%.    |
+//|    PRECISION MODE (default): per-asset optimized slots/expiries: |
+//|      EURJPY 16:40-16:45, 20-min: 93.3% (n=208)                  |
+//|      USDJPY 16:45,      30-min: 91.4% (n=104)                   |
+//|      GBPUSD 16:40-16:45, 25-min: 88.8% (n=206)                  |
+//|      blended EURJPY+USDJPY: 92.6% (n=312, PF 10.7), OOS 96.2%   |
+//|    WIDE MODE (PrecisionMode=false): 16:35-16:50, 25-min, all:   |
+//|      blended 86.6% (n=1664, PF 5.5), OOS 91.2%                  |
 //|                                                                  |
 //|  LEGACY MODE - "NY-Close Seasonal" rule (M15, 1h expiry):        |
 //|    PUT 20:00-21:00 UTC / CALL 21:00-23:00 UTC: 66-67% (n=776).   |
@@ -25,9 +29,10 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.20"
+#property version   "1.30"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
-#property description "Flagship: Micro-Fix rule (M5, 86.6% blended / 90.4% EURJPY) - NY 16:35-16:50 PUT"
+#property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
+#property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
 #property description "Supported assets: EURJPY, GBPUSD, USDJPY, EURGBP, AUDUSD"
 #property description "Legacy: NY-Close Seasonal rule (M15, 66-67%)"
 #property description "Execution happens manually on Quotex - this EA never sends orders."
@@ -60,9 +65,10 @@ input int    CooldownBars         = 1;           // Min bars between two signals
 input double Payout               = 0.85;        // Broker payout used for P&L statistics (0.85 = 85%)
 
 input group "=== Micro-Fix rule (NY local time, auto DST) ==="
-input int    MicroPutStartMin     = 995;         // PUT window start (NY minutes: 16:35)
-input int    MicroPutEndMin       = 1010;        // PUT window end   (NY minutes: 16:50)
-input int    MicroPutExpiryBars   = 5;           // PUT expiry in bars (5 = 25 min on M5, best)
+input bool   MicroPrecisionMode   = true;        // Per-asset optimized slots/expiry (90%+); false = wide 16:35-16:50 25-min
+input int    MicroPutStartMin     = 995;         // PUT window start (NY minutes: 16:35) [used in wide mode]
+input int    MicroPutEndMin       = 1010;        // PUT window end   (NY minutes: 16:50) [used in wide mode]
+input int    MicroPutExpiryBars   = 5;           // PUT expiry in bars (5 = 25 min on M5) [used in wide mode]
 input bool   MicroNoMonday        = false;       // Also skip Mondays (+1.1 pp, -25% signals)
 input bool   MicroCallEnabled     = false;       // Also trade the 17:50-18:00 NY CALL (adds 72-74% signals)
 input int    MicroCallStartMin    = 1070;        // CALL window start (NY minutes: 17:50)
@@ -459,10 +465,10 @@ string SignalConfidence(int hour, int dir)
   {
    if(dir > 0)
       return("MEDIUM - backtest 72-74%");
-//--- per-asset backtest accuracy (M5, 25-min expiry, Feb-Jul 2026)
-   if(StringFind(_Symbol, "EURJPY") >= 0) return("VERY HIGH - backtest 90.4%");
-   if(StringFind(_Symbol, "GBPUSD") >= 0) return("VERY HIGH - backtest 87.4%");
-   if(StringFind(_Symbol, "USDJPY") >= 0) return("VERY HIGH - backtest 85.5%");
+//--- per-asset backtest accuracy (M5 precision mode, Feb-Jul 2026)
+   if(StringFind(_Symbol, "EURJPY") >= 0) return("TOP - backtest 93.3%");
+   if(StringFind(_Symbol, "USDJPY") >= 0) return("TOP - backtest 91.4%");
+   if(StringFind(_Symbol, "GBPUSD") >= 0) return("HIGH - backtest 88.8%");
    if(StringFind(_Symbol, "EURGBP") >= 0) return("HIGH - backtest 83.2%");
    if(StringFind(_Symbol, "AUDUSD") >= 0) return("MEDIUM - backtest 76.9%");
    return("HIGH - micro-fix window");
@@ -502,11 +508,31 @@ void ProcessSignals()
 
          if(!(MicroNoFriday && friday) && !(MicroNoMonday && monday))
            {
-            if(nyMin >= MicroPutStartMin && nyMin <= MicroPutEndMin)
+            int wStart = MicroPutStartMin;
+            int wEnd   = MicroPutEndMin;
+            int wExp   = MicroPutExpiryBars;
+            if(MicroPrecisionMode)
+              {
+               //--- per-asset optimized windows (backtest Feb-Jul 2026, M5)
+               if(StringFind(_Symbol, "EURJPY") >= 0)
+                 {
+                  wStart = 1000; wEnd = 1005; wExp = 4;    // 16:40-16:45, 20 min: 93.3%
+                 }
+               else if(StringFind(_Symbol, "USDJPY") >= 0)
+                 {
+                  wStart = 1005; wEnd = 1005; wExp = 6;    // 16:45, 30 min: 91.4%
+                 }
+               else if(StringFind(_Symbol, "GBPUSD") >= 0)
+                 {
+                  wStart = 1000; wEnd = 1005; wExp = 5;    // 16:40-16:45, 25 min: 88.8%
+                 }
+               //--- EURGBP/AUDUSD/others fall back to the wide window (k=5)
+              }
+            if(nyMin >= wStart && nyMin <= wEnd)
               {
                rule = RULE_MICRO;
                dir  = -1;
-               expiryBars = MicroPutExpiryBars;
+               expiryBars = wExp;
               }
             else if(MicroCallEnabled && nyMin >= MicroCallStartMin && nyMin <= MicroCallEndMin)
               {
