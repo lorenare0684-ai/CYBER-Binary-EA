@@ -166,6 +166,19 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    no-change check skips the heavy work between scans, and the Strategy
    Tester falls back to 10,000 bars when `0` so backtests stay fast.
 
+   **v1.41 — feed self-diagnosis + window shift:** the panel now shows a
+   **Feed:** line that says where the NY settlement pattern actually sits on
+   your broker's data (computed over the full scanned history, 5-minute
+   resolution): `Feed: real - pattern 16:40 NY 94%`, `Feed: SHIFTED 17:40 NY
+   90% - set NyShiftMin -60`, or `Feed: NO pattern (best 17:30 45%) -
+   synthetic?`. If the pattern is shifted, set the input **`NyShiftMin`** to
+   the suggested value (default 0 = off) and the live AND painted windows
+   both move to the pattern — validated: a +60-min clock error drops real
+   EURJPY to ~40% and `NyShiftMin=-60` restores 93.3%. The Status line also
+   shows the effective window (`Micro PUT 16:40-16:45 e4`), and the Experts
+   log prints the same verdict with the suggested shift. A flat 38-53% in
+   every slot means the feed itself has no settlement flow (OTC/synthetic).
+
 ## Using the signals on Quotex
 
 1. When an arrow appears (or an Alert pops), open the same asset on Quotex.

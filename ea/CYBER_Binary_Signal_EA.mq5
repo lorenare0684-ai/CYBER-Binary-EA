@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.40"
+#property version   "1.41"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -96,6 +96,7 @@ input int    MicroCallExpiryBars  = 2;           // CALL expiry in bars (2 = 10 
 input bool   MicroNoFriday        = true;        // Skip Friday signals (validated +2.6 pp)
 input bool   UseAutoUsDst         = true;        // Auto US DST (2nd Sun Mar -> 1st Sun Nov)
 input int    ManualNyOffset       = -4;          // Manual NY offset (hours) if UseAutoUsDst=false
+input int    NyShiftMin           = 0;           // Shift the NY window by minutes (0=off; set if the Feed line says SHIFTED)
 
 input group "=== Legacy seasonal rule ==="
 input int    ExpiryBars           = 4;           // Expiry in bars (M15: 4 = 1 hour, M5: 6 = 30 min)
@@ -194,12 +195,18 @@ datetime          g_lastHistNewest = 0;  // newest bar time of the last scan
 bool              g_histPainted   = false;
 int               g_lastReportedBars = 0; // last coverage reported in the log
 
+//--- feed sanity profile result (last scan)
+int               g_profBestStart = -1;   // NY minute of the best 5-min slot
+int               g_profBestN     = 0;
+double            g_profBestAcc   = 0.0;
+int               g_profVerdict   = 0;    // 0=scanning 1=real 2=shifted 3=no pattern
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                    |
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   Print("CYBER Binary EA v1.40 starting on ", _Symbol, " ", EnumToString(Period()));
+   Print("CYBER Binary EA v1.41 starting on ", _Symbol, " ", EnumToString(Period()));
 
    //--- validate inputs
    if(ExpiryBars < 1)
@@ -339,6 +346,45 @@ bool IsValidatedPair()
   }
 
 //+------------------------------------------------------------------+
+//| Effective PUT window start (NY minutes) for this symbol/config    |
+//+------------------------------------------------------------------+
+int EffectivePutStartMin()
+  {
+   if(MicroPrecisionMode)
+     {
+      if(StringFind(_Symbol, "EURJPY") >= 0) return(1000);
+      if(StringFind(_Symbol, "USDJPY") >= 0) return(1005);
+      if(StringFind(_Symbol, "GBPUSD") >= 0) return(1000);
+     }
+   return(MicroPutStartMin);
+  }
+
+//+------------------------------------------------------------------+
+//| Effective window summary for the panel/log, e.g. "16:40-16:45 e4"|
+//+------------------------------------------------------------------+
+string EffectiveMicroText()
+  {
+   int wStart, wEnd, exp;
+   if(MicroPrecisionMode)
+     {
+      if(StringFind(_Symbol, "EURJPY") >= 0) { wStart = 1000; wEnd = 1005; exp = 4; }
+      else if(StringFind(_Symbol, "USDJPY") >= 0) { wStart = 1005; wEnd = 1005; exp = 6; }
+      else if(StringFind(_Symbol, "GBPUSD") >= 0) { wStart = 1000; wEnd = 1005; exp = 5; }
+      else { wStart = MicroPutStartMin; wEnd = MicroPutEndMin; exp = MicroPutExpiryBars; }
+     }
+   else
+     { wStart = MicroPutStartMin; wEnd = MicroPutEndMin; exp = MicroPutExpiryBars; }
+   string s = StringFormat("%s %d:%02d", (wEnd == wStart) ? "AT" : "PUT",
+                           wStart / 60, wStart % 60);
+   if(wEnd != wStart)
+      s += StringFormat("-%d:%02d", wEnd / 60, wEnd % 60);
+   s += " e" + IntegerToString(exp);
+   if(NyShiftMin != 0)
+      s += " shift" + IntegerToString(NyShiftMin);
+   return(s);
+  }
+
+//+------------------------------------------------------------------+
 //| "H:MM" from minute-of-day                                         |
 //+------------------------------------------------------------------+
 string MinutesToHm(int m)
@@ -351,21 +397,26 @@ string MinutesToHm(int m)
 //+------------------------------------------------------------------+
 string DetectedModeText()
   {
+   string m;
    if(!EnableMicroRule)
-      return(EnableSeasonalRule ? "legacy seasonal only" : "no rule enabled");
-   if(!MicroPrecisionMode)
-      return("Micro-Fix WIDE (PUT " + MinutesToHm(MicroPutStartMin) + "-" +
-             MinutesToHm(MicroPutEndMin) + " NY, exp " +
-             IntegerToString(MicroPutExpiryBars) + " bars)");
-   if(StringFind(_Symbol, "EURJPY") >= 0)
-      return("Micro-Fix precision EURJPY (PUT 16:40-16:45 NY, exp 4 bars / 20 min)");
-   if(StringFind(_Symbol, "USDJPY") >= 0)
-      return("Micro-Fix precision USDJPY (PUT 16:45 NY, exp 6 bars / 30 min)");
-   if(StringFind(_Symbol, "GBPUSD") >= 0)
-      return("Micro-Fix precision GBPUSD (PUT 16:40-16:45 NY, exp 5 bars / 25 min)");
-   return("Micro-Fix WIDE fallback (PUT " + MinutesToHm(MicroPutStartMin) + "-" +
+      m = (EnableSeasonalRule ? "legacy seasonal only" : "no rule enabled");
+   else if(!MicroPrecisionMode)
+      m = "Micro-Fix WIDE (PUT " + MinutesToHm(MicroPutStartMin) + "-" +
           MinutesToHm(MicroPutEndMin) + " NY, exp " +
-          IntegerToString(MicroPutExpiryBars) + " bars) - pair NOT in the validated set");
+          IntegerToString(MicroPutExpiryBars) + " bars)";
+   else if(StringFind(_Symbol, "EURJPY") >= 0)
+      m = "Micro-Fix precision EURJPY (PUT 16:40-16:45 NY, exp 4 bars / 20 min)";
+   else if(StringFind(_Symbol, "USDJPY") >= 0)
+      m = "Micro-Fix precision USDJPY (PUT 16:45 NY, exp 6 bars / 30 min)";
+   else if(StringFind(_Symbol, "GBPUSD") >= 0)
+      m = "Micro-Fix precision GBPUSD (PUT 16:40-16:45 NY, exp 5 bars / 25 min)";
+   else
+      m = "Micro-Fix WIDE fallback (PUT " + MinutesToHm(MicroPutStartMin) + "-" +
+          MinutesToHm(MicroPutEndMin) + " NY, exp " +
+          IntegerToString(MicroPutExpiryBars) + " bars) - pair NOT in the validated set";
+   if(NyShiftMin != 0)
+      m += " | window shift " + IntegerToString(NyShiftMin) + " min";
+   return(m);
   }
 
 //+------------------------------------------------------------------+
@@ -680,7 +731,7 @@ void ProcessSignals()
 
          if(!(MicroNoFriday && friday) && !(MicroNoMonday && monday))
            {
-            int microDir = MicroDirectionAt(nyMin, expiryBars);
+            int microDir = MicroDirectionAt(nyMin + NyShiftMin, expiryBars);
             if(microDir != 0)
               {
                rule = RULE_MICRO;
@@ -1038,9 +1089,9 @@ void DrawHistorySignals()
    int labeled = 0;
    int painted = 0;
 
-   //--- feed sanity profile buckets (NY 15-min slots, 14:00-18:00)
-   int profW[16];
-   int profL[16];
+   //--- feed sanity profile buckets (NY 5-min slots, 14:00-18:00)
+   int profW[48];
+   int profL[48];
    ArrayInitialize(profW, 0);
    ArrayInitialize(profL, 0);
 
@@ -1069,23 +1120,26 @@ void DrawHistorySignals()
       int nyMin = NyMinuteOfDayAt(barGmt);
       int expiryBars = 0;
 
-      //--- feed sanity profile: PUT outcome by NY 15-min slot (14:00-18:00),
+      //--- feed sanity profile: PUT outcome by NY 5-min slot (14:00-18:00),
       //--- fixed 20-min expiry, same exact-expiry policy. Shows WHERE the NY
       //--- settlement drift sits on THIS feed (or if it exists at all) - the
-      //--- real market shows ~77-82% at 16:30-17:00 then ~18-40% after 17:00.
+      //--- real market shows 84-94% at 16:35-16:55 then ~18-40% after 17:00.
       if(nyMin >= 840 && nyMin < 1080)
         {
          int expIdx = shift - 4;
          if(expIdx >= 1 && rates[expIdx].time == barTime + 20 * 60)
            {
             if(rates[expIdx].close < rates[shift].close)
-               profW[(nyMin - 840) / 15]++;
+               profW[(nyMin - 840) / 5]++;
             else if(rates[expIdx].close > rates[shift].close)
-               profL[(nyMin - 840) / 15]++;
+               profL[(nyMin - 840) / 5]++;
            }
         }
 
-      int dir = MicroDirectionAt(nyMin, expiryBars);
+      //--- window check with the optional manual shift (NyShiftMin) applied;
+      //--- the profile above always uses the UNshifted minute so it shows the
+      //--- pattern's true location on this feed
+      int dir = MicroDirectionAt(nyMin + NyShiftMin, expiryBars);
       if(dir == 0)
          continue;
 
@@ -1155,6 +1209,37 @@ void DrawHistorySignals()
          labeled++;
         }
      }
+   //--- feed sanity verdict (read by the panel Feed line)
+   g_profBestStart = -1;
+   g_profBestN     = 0;
+   g_profBestAcc   = 0.0;
+   g_profVerdict   = 0;
+   int totProf = 0;
+   for(int b = 0; b < 48; b++)
+     {
+      int nb = profW[b] + profL[b];
+      totProf += nb;
+      if(nb >= 8)
+        {
+         double a = 100.0 * profW[b] / nb;
+         if(a > g_profBestAcc)
+           {
+            g_profBestAcc   = a;
+            g_profBestStart = 840 + 5 * b;
+            g_profBestN     = nb;
+           }
+        }
+     }
+   if(totProf >= 100 && g_profBestStart >= 0)
+     {
+      if(g_profBestAcc >= 70.0 && g_profBestStart >= 975 && g_profBestStart <= 1035)
+         g_profVerdict = 1;                       // pattern in the expected zone
+      else if(g_profBestAcc >= 70.0)
+         g_profVerdict = 2;                       // strong pattern, but shifted
+      else
+         g_profVerdict = 3;                       // no strong pattern anywhere
+     }
+
    g_histPainted = true;
    ChartRedraw(0);
 
@@ -1168,48 +1253,42 @@ void DrawHistorySignals()
                          g_histWins, g_histLosses, g_histScratches));
 
       //--- feed sanity report: WHERE does the down-drift sit on this feed?
-      //--- Real market: ~77-82% at 16:30-17:00 NY, then ~18-40% (reversal)
+      //--- Real market: 84-94% at 16:35-16:55 NY, then ~18-40% (reversal)
       //--- after 17:00. A flat 40-55% everywhere = no settlement pattern
       //--- (OTC/synthetic feed); a strong slot away from 16:15-17:15 = the
       //--- broker's clock/offset differs from NY by a fixed shift.
       string prof = "CYBER: window profile (PUT, 20-min, NY): ";
-      int bestIdx = -1, bestN = 0;
-      double bestAcc = 0.0;
-      for(int b = 0; b < 16; b++)
+      for(int s = 0; s < 16; s++)
         {
-         int nb = profW[b] + profL[b];
+         int w = 0, l = 0;
+         for(int b = s * 3; b < s * 3 + 3; b++)
+           {
+            w += profW[b];
+            l += profL[b];
+           }
+         int nb = w + l;
          if(nb < 5)
             continue;
-         double a = 100.0 * profW[b] / nb;
-         if(nb >= 8 && a > bestAcc)
-           {
-            bestAcc = a;
-            bestIdx = b;
-            bestN  = nb;
-           }
-         int st = 840 + 15 * b;
+         int st = 840 + 15 * s;
          prof += StringFormat("%02d:%02d %d%%(%d) ", st / 60, st % 60,
-                              (int)MathRound(a), nb);
+                              (int)MathRound(100.0 * w / nb), nb);
         }
       Print(prof);
-      if(bestIdx >= 0)
+      if(g_profVerdict == 1)
+         Print(StringFormat("CYBER: NY settlement pattern DETECTED on this feed (best slot %02d:%02d %.1f%%, n=%d) - feed looks real, windows aligned",
+                            g_profBestStart / 60, g_profBestStart % 60,
+                            g_profBestAcc, g_profBestN));
+      else if(g_profVerdict == 2)
         {
-         int st = 840 + 15 * bestIdx;
-         string where = StringFormat("%02d:%02d-%02d:%02d", st / 60, st % 60,
-                                     (st + 15) / 60, (st + 15) % 60);
-         if(bestAcc >= 70.0 && bestIdx >= 9 && bestIdx <= 11)
-            Print("CYBER: NY settlement pattern DETECTED on this feed (best slot ",
-                  where, " ", DoubleToString(bestAcc, 1), "%, n=", bestN,
-                  ") - feed looks real, windows aligned");
-         else if(bestAcc >= 70.0)
-            Print("CYBER: strong pattern found but SHIFTED to ", where, " (",
-                  DoubleToString(bestAcc, 1), "%, n=", bestN,
-                  ") - broker server offset/feed differs by a fixed shift");
-         else
-            Print("CYBER: NO settlement pattern on this feed (best slot ", where,
-                  " ", DoubleToString(bestAcc, 1), "%, n=", bestN,
-                  ") - OTC/synthetic feed or different market; the 90%+ edge does not apply here");
+         int suggested = EffectivePutStartMin() - g_profBestStart;
+         Print(StringFormat("CYBER: strong pattern found but SHIFTED to %02d:%02d (%.1f%%, n=%d) - set the input NyShiftMin = %d (approx) to align the window",
+                            g_profBestStart / 60, g_profBestStart % 60,
+                            g_profBestAcc, g_profBestN, suggested));
         }
+      else if(g_profVerdict == 3)
+         Print(StringFormat("CYBER: NO settlement pattern on this feed (best slot %02d:%02d %.1f%%, n=%d) - OTC/synthetic feed or different market; the 90%%+ edge does not apply here",
+                            g_profBestStart / 60, g_profBestStart % 60,
+                            g_profBestAcc, g_profBestN));
      }
   }
 
@@ -1418,7 +1497,7 @@ void WriteDashboardHtml()
    int hour = UtcHour();
    if(EnableMicroRule)
      {
-      int nyMin = NyMinuteOfDay(TimeGMT());
+      int nyMin = NyMinuteOfDay(TimeGMT()) + NyShiftMin;
       if(nyMin >= MicroPutStartMin && nyMin <= MicroPutEndMin)
          side = "Micro-Fix PUT window active (NY)";
       else if(MicroCallEnabled && nyMin >= MicroCallStartMin && nyMin <= MicroCallEndMin)
@@ -1685,12 +1764,37 @@ void UpdatePanel()
                            IntegerToString(seasonalTrades) + "  Burst " + IntegerToString(burstTrades);
       lines[lineCount++] = "----------------------------";
      }
+   //--- feed sanity line: where the settlement pattern sits on THIS feed
+   string feedTxt = "Feed: scanning...";
+   if(g_profVerdict == 1)
+      feedTxt = "Feed: real - pattern " + MinutesToHm(g_profBestStart) + " NY " +
+                DoubleToString(g_profBestAcc, 0) + "%";
+   else if(g_profVerdict == 2)
+     {
+      feedTxt = "Feed: SHIFTED " + MinutesToHm(g_profBestStart) + " NY " +
+                DoubleToString(g_profBestAcc, 0) + "%";
+      if(NyShiftMin == 0)
+         feedTxt += " - set NyShiftMin " +
+                    IntegerToString(EffectivePutStartMin() - g_profBestStart);
+      else
+         feedTxt += " - shift " + IntegerToString(NyShiftMin) + " applied";
+     }
+   else if(g_profVerdict == 3)
+      feedTxt = "Feed: NO pattern (best " + MinutesToHm(g_profBestStart) + " " +
+                DoubleToString(g_profBestAcc, 0) + "%) - synthetic?";
+   lines[lineCount++] = feedTxt;
+
    if(!IsValidatedPair())
       lines[lineCount++] = MQLInfoInteger(MQL_TESTER)
                            ? "WARNING: pair NOT validated!"
                            : "WARNING: " + _Symbol + " not validated - use EURJPY/USDJPY/GBPUSD M5";
    else
-      lines[lineCount++] = "Status: " + CurrentWindowStatus();
+     {
+      string st = "Status: " + CurrentWindowStatus();
+      if(!inTester && EnableMicroRule)
+         st = "Status: " + EffectiveMicroText() + " | " + CurrentWindowStatus();
+      lines[lineCount++] = st;
+     }
 
    int panelH = lineCount * lineH + baseFont + 12;
 
@@ -1742,6 +1846,8 @@ void UpdatePanel()
       else if(StringFind(lines[i], "Net (") >= 0)         txtColor = (net >= 0.0) ? clrLime : clrOrangeRed;
       else if(StringFind(lines[i], "Status:") >= 0)       txtColor = clrLightSkyBlue;
       else if(StringFind(lines[i], "WARNING") >= 0)       txtColor = clrOrangeRed;
+      else if(StringFind(lines[i], "Feed:") >= 0)
+         txtColor = (g_profVerdict == 1) ? clrLime : clrOrangeRed;
       ObjectSetInteger(0, name, OBJPROP_COLOR, txtColor);
       ObjectSetString(0, name, OBJPROP_TEXT, lines[i]);
       ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
@@ -1850,7 +1956,7 @@ string CurrentWindowStatus()
    int hour = UtcHour();
    if(EnableMicroRule)
      {
-      int nyMin = NyMinuteOfDay(TimeGMT());
+      int nyMin = NyMinuteOfDay(TimeGMT()) + NyShiftMin;
       if(nyMin >= MicroPutStartMin && nyMin <= MicroPutEndMin)
          return("MICRO PUT " + IntegerToString(MicroPutStartMin / 60) + ":" +
                 StringFormat("%02d", MicroPutStartMin % 60) + "-" +
