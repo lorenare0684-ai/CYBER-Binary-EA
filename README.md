@@ -26,6 +26,17 @@ any window size.
 - Optional CALL rule (17:50–18:00 NY, 10-min): +6 signals/day at ~72–74% (blended 80.6%).
 - Full research in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 
+### ⚠️ What 20+ years of data shows (read this)
+
+The flagship was re-validated on **19 years of 1-minute HistData (2000–2018,
+all 6 pairs)** with the exact same rule and correct historical DST: accuracy
+is **49–55% — the edge did not exist then**. The 71–90% numbers are a recent
+(2026) phenomenon; 2019–2025 is unverifiable from this environment. The
+coarser legacy rule (M15/1h) does show a modest edge over 25 years (53% →
+55% → 57% by era, same provider). **Treat the 80%+ as regime-specific, not a
+20-year expectation** — demo-validate on your Quotex OTC feed for several
+weeks before risking real money, and re-measure monthly.
+
 ## The strategy: Micro-Fix (NY settlement flow)
 
 The 30 minutes before the **17:00 New York CME/futures settlement** show a
@@ -127,9 +138,10 @@ python3 tools/check_mql5.py ea/CYBER_Binary_Signal_EA.mq5   # EA syntax gate
 
 ## Risk notes (read before live trading)
 
-- The edge is a **slow drift, not a guarantee**. The flagship had no losing
-  month in this sample (worst: 70% in Mar 2026), but expect occasional losing
-  months and streaks in live trading.
+- The edge is a **slow drift, not a guarantee** — and it is **regime-dependent**:
+  the flagship numbers come from the 2026 sample; the same rule on 2000–2018
+  HistData (19 years, 6 pairs) shows 49–55% (no edge). Expect occasional
+  losing months and streaks in live trading, and re-measure monthly.
 - Historical FX data ≠ Quotex OTC candles (synthetic 24/7 feed) — **demo-test
   first**, and compare the OTC session times with your broker.
 - Binary break-even at 85% payout is 54.05% accuracy — the flagship targets

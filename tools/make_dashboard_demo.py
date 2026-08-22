@@ -115,6 +115,10 @@ def main():
                     f"<td class='win'><b>{v['accuracy']}%</b></td><td>{v['pf']}</td></tr>")
     html.append("</tbody></table></div>")
 
+    html.append("<div class='card'><h2>Reality check (2000-2018)</h2>"
+                "<div class='small'>The same rule on 19 years of HistData M1 (6 pairs, "
+                "2000-2018) shows 49-55% — no edge. The 2026 numbers are regime-specific; "
+                "demo-validate on the Quotex OTC feed before risking real money.</div></div>")
     html.append("<div class='foot'>CYBER Binary EA &middot; flagship: Micro-Fix "
                 "(PUT 16:35-16:50 NY, 25-min expiry, EURJPY/GBPUSD/USDJPY/EURGBP) &middot; "
                 "the live dashboard opens automatically in your browser when the EA is attached</div>")
