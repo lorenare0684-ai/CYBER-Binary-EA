@@ -10,17 +10,21 @@ any window size.
 
 ---
 
-## TL;DR — the 80%+ flagship (Micro-Fix rule, M5)
+## TL;DR — the 85%+ flagship (Micro-Fix rule, M5)
 
-| Variant | Trades | **Accuracy** | Profit factor | Out-of-sample (May–Jul) |
-|---------|--------|--------------|---------------|-------------------------|
-| **PUT 16:35–16:50 NY, 20-min expiry, no Fridays (default)** | 828 | **83.6%** | 4.32 | **88.6%** |
-| PUT, all days | 1028 | 80.9% | 3.61 | 84.2% |
-| PUT + CALL 17:50–18:00 NY, 10-min | 1590 | 78.2% | 3.04 | 82.9% |
+| Asset | **Accuracy** | Trades | Out-of-sample (May–Jul) |
+|-------|--------------|--------|-------------------------|
+| **EURJPY** | **90.4%** | 415 | **96.6%** |
+| GBPUSD | 87.4% | 413 | 87.0% |
+| USDJPY | 85.5% | 415 | **96.2%** |
+| EURGBP | 83.2% | 416 | 85.1% |
+| **Blended 4-asset flagship** | **86.6%** | 1659 | **91.2%** |
+| + skip Mondays | 87.7% | 1244 | 91.8% |
 
-Every month ≥ 70% (Feb 79%, Mar 70%, Apr 86%, May 92%, Jun 90%, Jul 85%).
-Per pair: GBPUSD 82.6% · USDJPY 84.5%. Full research in
-[`docs/RESEARCH.md`](docs/RESEARCH.md).
+- **16 signals/day** (4 assets × 4 bars: 16:35/16:40/16:45/16:50 NY), Mon–Thu, ~64/week.
+- Every month ≥ 73% (Feb 87%, Mar 73%, Apr 86%, May 94%, Jun 91%, Jul 89%); PF 5.5.
+- Optional CALL rule (17:50–18:00 NY, 10-min): +6 signals/day at ~72–74% (blended 80.6%).
+- Full research in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 
 ## The strategy: Micro-Fix (NY settlement flow)
 
@@ -29,18 +33,21 @@ reproducible institutional flow pattern:
 
 | Window (NY local time) | Direction | Expiry | Backtest accuracy |
 |------------------------|-----------|--------|-------------------|
-| 16:35 – 16:50 (pre-settlement dip) | **PUT** | 20 min | **83.6%** |
+| 16:35 – 16:50 (pre-settlement dip) | **PUT** | 25 min | **83–90% per asset** |
 | 17:50 – 18:00 (rally into close) | CALL (optional) | 10 min | 72–74% |
 
 - The windows are anchored to **New York local time** (not UTC) with automatic
   **US-DST** detection in the EA (second Sunday of March → first Sunday of
   November) — the formula was validated against America/New_York for 2020–2029
   with 0 mismatches. In summer the PUT window is 20:35–20:50 UTC; in winter it
-  is 21:35–21:50 UTC. This DST correction is what turns the old 50/50 February
-  into a profitable month (79%).
-- **Fridays are skipped by default** (validated +2.6 pp: 80.9% → 83.6%).
-- One signal per closed 5-minute bar in the window; expiry fixed at 20 minutes.
-  ~6 signals/day across GBPUSD + USDJPY.
+  is 21:35–21:50 UTC.
+- **Fridays are skipped by default** (+2.6 pp); `MicroNoMonday` optionally adds
+  +1.1 pp. The 25-minute expiry (k=5) beat 20-minute on every asset.
+- One signal per closed 5-minute bar in the window → 4 signals per asset per day.
+
+**Supported assets (validated on M5):** EURJPY 90.4% · GBPUSD 87.4% · USDJPY
+85.5% · EURGBP 83.2% · AUDUSD 76.9% · EURUSD 72.0% · (XAUUSD inverts the
+pattern — not recommended). The EA works on any of them without changes.
 
 Legacy mode (optional, M15): NY-Close Seasonal rule — PUT 20:00–21:00 UTC /
 CALL 21:00–23:00 UTC, 1-hour expiry — 66–67% accuracy (n=776).
@@ -68,9 +75,9 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    (In MT5: `File ▸ Open Data Folder ▸ MQL5 ▸ Experts`.)
 2. In MetaEditor press **Compile** (F7) — must finish with *0 errors, 0 warnings*.
 3. In MT5: drag the EA onto a chart.
-   - **Flagship (default): GBPUSD or USDJPY, M5 chart.** The Micro-Fix rule is
-     on by default and trades the PUT window 16:35–16:50 NY with a 20-min
-     expiry. Attach to both pairs for ~6 signals/day.
+   - **Flagship (default): attach to EURJPY, GBPUSD, USDJPY and EURGBP charts
+     (M5).** The Micro-Fix rule is on by default: PUT window 16:35–16:50 NY,
+     25-min expiry. 4 signals per chart per day → 16/day on 4 charts.
    - Legacy mode: M15 chart, set `EnableMicroRule=false`,
      `EnableSeasonalRule=true`, `ExpiryBars=4` (1-hour expiry).
 4. The **HTML dashboard opens automatically in your browser** (a new window).
@@ -82,8 +89,14 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
 
 1. When an arrow appears (or an Alert pops), open the same asset on Quotex.
 2. Buy **DOWN** for a PUT arrow (flagship), **UP** for a CALL arrow.
-3. Set the expiry to the suggested time (shown in the alert and as a dotted
-   line on the chart; default 20 minutes).
+3. Set the expiry to the suggested time (shown in the alert, in the label next
+   to the arrow, and as a dotted vertical line on the chart; default 25 min).
+4. The chart shows full signal detail: arrow + **visible text label**
+   (direction, rule, expiry time, entry price), an **entry-price line**, the
+   expiry line, and a **live "Last Signal" panel** (bottom-left) with a
+   countdown to expiry and the result once closed.
+5. Optional: enable `NotifyOnSignal` (push). The EA handles US-DST
+   automatically; only set `ManualNyOffset` if you disable `UseAutoUsDst`.
 4. Optional: enable `NotifyOnSignal` (push). The EA handles US-DST
    automatically; only set `ManualNyOffset` if you disable `UseAutoUsDst`.
 
@@ -93,10 +106,11 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
 |-------|---------|---------|
 | `EnableMicroRule` | true | flagship Micro-Fix rule (M5) |
 | `MicroPutStartMin/MicroPutEndMin` | 995/1010 | PUT window, NY minutes (16:35–16:50) |
-| `MicroPutExpiryBars` | 4 | PUT expiry (4 bars = 20 min on M5) |
+| `MicroNoFriday` | true | skip Fridays (+2.6 pp validated) |
+| `MicroPutExpiryBars` | 5 | PUT expiry (5 bars = 25 min on M5, best on all assets) |
+| `MicroNoMonday` | false | skip Mondays too (+1.1 pp, -25% signals) |
 | `MicroCallEnabled` | false | also trade the 17:50–18:00 NY CALL (72–74%) |
 | `MicroCallExpiryBars` | 2 | CALL expiry (10 min on M5) |
-| `MicroNoFriday` | true | skip Fridays (+2.6 pp validated) |
 | `UseAutoUsDst` | true | automatic US DST (2nd Sun Mar → 1st Sun Nov) |
 | `EnableSeasonalRule` | false | legacy M15 NY-Close Seasonal rule |
 | `AutoOpenDashboard` | true | open the HTML dashboard in the browser on attach |

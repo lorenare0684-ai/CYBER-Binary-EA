@@ -1,10 +1,10 @@
-/home/user/CYBER-Binary-EA/backtest/make_report.py:114: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+/home/user/CYBER-Binary-EA/backtest/make_report.py:118: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
   md.append("_Generated " + pd.Timestamp.utcnow().strftime("%Y-%m-%d %H:%M UTC") + " "
-/home/user/CYBER-Binary-EA/backtest/make_report.py:275: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
+/home/user/CYBER-Binary-EA/backtest/make_report.py:290: Pandas4Warning: Timestamp.utcnow is deprecated and will be removed in a future version. Use Timestamp.now('UTC') instead.
   "generated": str(pd.Timestamp.utcnow()),
 # CYBER Binary EA - Strategy Validation Report
 
-_Generated 2026-08-22 10:03 UTC - data: getdata.finance OHLCV, Feb 1 - Jul 31 2026, 24/5 FX_
+_Generated 2026-08-22 10:14 UTC - data: getdata.finance OHLCV, Feb 1 - Jul 31 2026, 24/5 FX_
 
 ## 1. Strategy summary
 
@@ -60,19 +60,23 @@ The effect is regime-dependent: weak before ~2015, consistently present since 20
 | 2012-2017 | 54.8% (n=11170) | 56.0% (n=22359) |
 | 2018-2026 | 57.2% (n=6570) | 59.2% (n=13159) |
 
-## 6. Micro-Fix strategy (flagship, 80%+)
+## 6. Micro-Fix strategy (flagship, 85%+)
 
 **Mechanism.** The 30 minutes before the 17:00 New York CME/futures settlement show a reproducible dip (16:35-16:50 NY) followed by a rally into the electronic close (17:50-18:00 NY). Windows are anchored to NY local time with automatic US-DST handling (validated: 0 mismatches vs America/New_York over 2020-2029).
 
 | Variant | Trades | Accuracy | PF | Feb-Apr | May-Jul (OOS) |
 |---------|--------|----------|----|---------|---------------|
-| PUT 16:35-16:50 NY, 20-min expiry, no Fridays (default) | 828 | **83.57%** | 4.32 | 78.5% (n=414) | **88.6%** (n=414) |
-| PUT 16:35-16:50 NY, 20-min expiry, all days | 1028 | **80.93%** | 3.61 | 77.6% (n=510) | **84.2%** (n=518) |
-| PUT + CALL (17:50-18:00 NY, 10-min), no Fridays | 1590 | **78.18%** | 3.04 | 73.4% (n=794) | **82.9%** (n=796) |
+| PUT 16:35-16:50 NY, 25-min expiry, no Fridays, 4 assets (default) | 1659 | **86.62%** | 5.5 | 82.0% (n=829) | **91.2%** (n=830) |
+| Flagship + skip Mondays | 1244 | **87.7%** | 6.06 | 83.6% (n=621) | **91.8%** (n=623) |
+| PUT + CALL (17:50-18:00 NY, 10-min), no Fridays | 3186 | **80.57%** | 3.52 | 77.5% (n=1589) | **83.6%** (n=1597) |
+| 5 assets (incl. AUDUSD) | 2074 | **84.67%** | 4.69 | 81.5% (n=1036) | **87.9%** (n=1038) |
+| PUT, all days, 4 assets | 2059 | **83.63%** | 4.34 | 81.3% (n=1021) | **85.9%** (n=1038) |
 
-Monthly accuracy (flagship): 02:79% | 03:70% | 04:86% | 05:92% | 06:90% | 07:85%
+Monthly accuracy (flagship): 02:87% | 03:73% | 04:86% | 05:94% | 06:91% | 07:89%
 
-Per pair (flagship): GBPUSD: 82.61% (n=414) | USDJPY: 84.54% (n=414)
+Per pair (flagship, k=5): EURJPY: 90.36% (n=415) | GBPUSD: 87.41% (n=413) | USDJPY: 85.54% (n=415) | EURGBP: 83.17% (n=416) | AUDUSD: 76.87% (n=415) | EURUSD: 71.95% (n=410)
+
+**Signal frequency:** 4 signals per asset per day (16:35, 16:40, 16:45, 16:50 NY bars) = 16 signals/day on the 4-asset flagship, ~16 per day, Mon-Thu only.
 
 ## 7. Risk notes (read before live trading)
 

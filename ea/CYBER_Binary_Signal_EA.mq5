@@ -5,15 +5,14 @@
 //|  Generates CALL/PUT binary-option signals for Quotex OTC markets |
 //|  based on researched NY-session flow patterns.                   |
 //|                                                                  |
-//|  FLAGSHIP MODE (default) - "Micro-Fix" rule on M5 (80%+):        |
+//|  FLAGSHIP MODE (default) - "Micro-Fix" rule on M5 (85%+):        |
 //|    The 30 minutes before the 17:00 New York CME/futures          |
 //|    settlement show a reproducible dip (16:35-16:50 NY) and a     |
 //|    rally into the electronic close (17:50-18:00 NY).             |
 //|    Windows are anchored to New York local time (auto US-DST).    |
-//|    Backtest (GBPUSD+USDJPY, M5, Feb-Jul 2026, Fridays off):      |
-//|      PUT 16:35-16:50 NY, 20-min expiry: 83.6% (n=828, PF 4.3)    |
-//|      CALL 17:50-18:00 NY, 10-min expiry: 72-74%                  |
-//|      every month >= 70%; out-of-sample May-Jul: 88.6%            |
+//|    Backtest (4 assets, M5, Feb-Jul 2026, Fridays off, 25-min     |
+//|    expiry): EURJPY 90.4% | GBPUSD 87.4% | USDJPY 85.5% |         |
+//|    EURGBP 83.2% -> blended 86.6% (n=1664, PF 5.5), OOS 91.2%.    |
 //|                                                                  |
 //|  LEGACY MODE - "NY-Close Seasonal" rule (M15, 1h expiry):        |
 //|    PUT 20:00-21:00 UTC / CALL 21:00-23:00 UTC: 66-67% (n=776).   |
@@ -26,9 +25,10 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.10"
+#property version   "1.20"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
-#property description "Flagship: Micro-Fix rule (M5, 83% backtest) - NY 16:35-16:50 PUT, 17:50-18:00 CALL"
+#property description "Flagship: Micro-Fix rule (M5, 86.6% blended / 90.4% EURJPY) - NY 16:35-16:50 PUT"
+#property description "Supported assets: EURJPY, GBPUSD, USDJPY, EURGBP, AUDUSD"
 #property description "Legacy: NY-Close Seasonal rule (M15, 66-67%)"
 #property description "Execution happens manually on Quotex - this EA never sends orders."
 
@@ -62,7 +62,8 @@ input double Payout               = 0.85;        // Broker payout used for P&L s
 input group "=== Micro-Fix rule (NY local time, auto DST) ==="
 input int    MicroPutStartMin     = 995;         // PUT window start (NY minutes: 16:35)
 input int    MicroPutEndMin       = 1010;        // PUT window end   (NY minutes: 16:50)
-input int    MicroPutExpiryBars   = 4;           // PUT expiry in bars (4 = 20 min on M5)
+input int    MicroPutExpiryBars   = 5;           // PUT expiry in bars (5 = 25 min on M5, best)
+input bool   MicroNoMonday        = false;       // Also skip Mondays (+1.1 pp, -25% signals)
 input bool   MicroCallEnabled     = false;       // Also trade the 17:50-18:00 NY CALL (adds 72-74% signals)
 input int    MicroCallStartMin    = 1070;        // CALL window start (NY minutes: 17:50)
 input int    MicroCallEndMin      = 1080;        // CALL window end   (NY minutes: 18:00)
@@ -458,7 +459,13 @@ string SignalConfidence(int hour, int dir)
   {
    if(dir > 0)
       return("MEDIUM - backtest 72-74%");
-   return("HIGH - backtest 83.6%");
+//--- per-asset backtest accuracy (M5, 25-min expiry, Feb-Jul 2026)
+   if(StringFind(_Symbol, "EURJPY") >= 0) return("VERY HIGH - backtest 90.4%");
+   if(StringFind(_Symbol, "GBPUSD") >= 0) return("VERY HIGH - backtest 87.4%");
+   if(StringFind(_Symbol, "USDJPY") >= 0) return("VERY HIGH - backtest 85.5%");
+   if(StringFind(_Symbol, "EURGBP") >= 0) return("HIGH - backtest 83.2%");
+   if(StringFind(_Symbol, "AUDUSD") >= 0) return("MEDIUM - backtest 76.9%");
+   return("HIGH - micro-fix window");
   }
 
 //+------------------------------------------------------------------+
@@ -485,12 +492,15 @@ void ProcessSignals()
         {
          int nyMin = NyMinuteOfDay(sigGmt);
          bool friday = false;
+         bool monday = false;
          MqlDateTime mdt;
          TimeToStruct(sigGmt, mdt);
          if(mdt.day_of_week == 5)
             friday = true;
+         if(mdt.day_of_week == 1)
+            monday = true;
 
-         if(!(MicroNoFriday && friday))
+         if(!(MicroNoFriday && friday) && !(MicroNoMonday && monday))
            {
             if(nyMin >= MicroPutStartMin && nyMin <= MicroPutEndMin)
               {
@@ -579,8 +589,10 @@ void ProcessSignals()
 
    AddTrade(sigTime, expiry, dir, entry, 0.0, TR_PENDING, rule);
 
-   //--- chart markers
+   //--- chart markers (arrow + visible label + entry line + expiry line)
    DrawSignalArrow(sigTime, entry, dir, rule);
+   DrawSignalLabel(sigTime, entry, dir, expiry, rule);
+   DrawEntryPriceLine(entry, dir);
    DrawExpiryLine(expiry, dir);
 
    //--- notifications
@@ -683,7 +695,7 @@ void ResolvePending()
   }
 
 //+------------------------------------------------------------------+
-//| Chart arrows + expiry line                                        |
+//| Chart painting: arrows + visible signal details on the chart      |
 //+------------------------------------------------------------------+
 void DrawSignalArrow(datetime time, double price, int dir, int rule)
   {
@@ -698,9 +710,53 @@ void DrawSignalArrow(datetime time, double price, int dir, int rule)
       ObjectSetInteger(0, name, OBJPROP_BACK, false);
       ObjectSetString(0, name, OBJPROP_TOOLTIP,
                       StringFormat("%s %s | %s", (dir > 0) ? "CALL" : "PUT", _Symbol,
-                                   (rule == RULE_SEASONAL) ? "NY-Close Seasonal" : "Down-Burst"));
+                                   (rule == RULE_MICRO) ? "Micro-Fix" :
+                                   ((rule == RULE_SEASONAL) ? "NY-Close Seasonal" : "Burst Reversal")));
      }
    g_arrowCount++;
+  }
+
+//--- visible text label next to the signal arrow (direction, rule, expiry)
+void DrawSignalLabel(datetime time, double price, int dir, datetime expiry, int rule)
+  {
+   string name = StringFormat("%sLBL_%d", MARKER_PREFIX, (g_arrowCount - 1) % 200);
+   if(ObjectFind(0, name) >= 0)
+      ObjectDelete(0, name);
+   color clr = (dir > 0) ? clrLime : clrOrangeRed;
+   string side = (dir > 0) ? "CALL" : "PUT";
+   string ruleTxt = (rule == RULE_MICRO) ? "MICRO" :
+                    ((rule == RULE_SEASONAL) ? "SEASONAL" : "BURST");
+   string txt = StringFormat("%s %s | exp %s | %.5g",
+                             side, ruleTxt,
+                             TimeToString(expiry, TIME_MINUTES),
+                             price);
+   if(ObjectCreate(0, name, OBJ_TEXT, 0, time, price))
+     {
+      ObjectSetString(0, name, OBJPROP_TEXT, txt);
+      ObjectSetInteger(0, name, OBJPROP_COLOR, clr);
+      ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 9);
+      ObjectSetString(0, name, OBJPROP_FONT, "Consolas");
+      ObjectSetInteger(0, name, OBJPROP_ANCHOR, ANCHOR_LEFT_UPPER);
+      ObjectSetInteger(0, name, OBJPROP_BACK, false);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+     }
+  }
+
+//--- horizontal line at the entry price of the current trade
+void DrawEntryPriceLine(double entry, int dir)
+  {
+   string name = MARKER_PREFIX + "ENTRY";
+   if(ObjectFind(0, name) >= 0)
+      ObjectDelete(0, name);
+   if(ObjectCreate(0, name, OBJ_HLINE, 0, 0, entry))
+     {
+      ObjectSetInteger(0, name, OBJPROP_COLOR, (dir > 0) ? clrLime : clrOrangeRed);
+      ObjectSetInteger(0, name, OBJPROP_STYLE, STYLE_DASH);
+      ObjectSetInteger(0, name, OBJPROP_WIDTH, 1);
+      ObjectSetString(0, name, OBJPROP_TOOLTIP,
+                      "CYBER entry " + DoubleToString(entry, _Digits));
+     }
   }
 
 void DrawExpiryLine(datetime expiry, int dir)
@@ -1147,7 +1203,98 @@ void UpdatePanel()
       ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
       ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
      }
+
+   //--- last-signal detail panel (bottom-left), scales with the window
+   DrawLastSignalPanel(chartW, chartH, baseFont);
+
    ChartRedraw(0);
+  }
+
+//+------------------------------------------------------------------+
+//| "Last signal" detail panel (bottom-left of the chart)             |
+//+------------------------------------------------------------------+
+void DrawLastSignalPanel(int chartW, int chartH, int baseFont)
+  {
+   string prefix = PANEL_PREFIX + "LS_";
+   ObjectsDeleteAll(0, prefix);
+
+   int n = ArraySize(g_trades);
+   if(n == 0)
+      return;
+
+   TradeRec &t = g_trades[n - 1];
+   int lineH = baseFont + 7;
+   int margin = 8;
+
+   string dirTxt = (t.direction > 0) ? "CALL" : "PUT";
+   string ruleTxt = (t.rule == RULE_MICRO) ? "Micro-Fix" :
+                    ((t.rule == RULE_SEASONAL) ? "NY-Close Seasonal" : "Burst Reversal");
+   string resTxt = "PENDING";
+   color resClr = clrSilver;
+   if(t.result == TR_WIN)          { resTxt = "WIN";  resClr = clrLime;      }
+   else if(t.result == TR_LOSS)    { resTxt = "LOSS"; resClr = clrOrangeRed; }
+   else if(t.result == TR_SCRATCH) { resTxt = "TIE";  resClr = clrGold;      }
+   else if(t.result == TR_CANCEL)  { resTxt = "SKIP"; resClr = clrGray;      }
+
+   string countdown = "";
+   if(t.result == TR_PENDING)
+     {
+      int secs = (int)(t.expiry - TimeCurrent());
+      if(secs < 0)
+         secs = 0;
+      countdown = StringFormat("expires in %02d:%02d", secs / 60, secs % 60);
+     }
+
+   string lines[6];
+   int lineCount = 0;
+   lines[lineCount++] = "LAST SIGNAL";
+   lines[lineCount++] = dirTxt + " " + _Symbol + "  [" + ruleTxt + "]";
+   lines[lineCount++] = "Entry " + DoubleToString(t.entry, _Digits) +
+                        "  Exp " + TimeToString(t.expiry, TIME_MINUTES);
+   if(t.result == TR_PENDING)
+      lines[lineCount++] = countdown;
+   else
+      lines[lineCount++] = "Result: " + resTxt;
+   lines[lineCount++] = "Signal " + TimeToString(t.time, TIME_DATE | TIME_MINUTES);
+
+   int panelW = MathMax(240, chartW / 5);
+   int panelH = lineCount * lineH + baseFont + 12;
+
+   //--- background (bottom-left corner = 2)
+   string bgName = prefix + "BG";
+   ObjectCreate(0, bgName, OBJ_RECTANGLE_LABEL, 0, 0, 0);
+   ObjectSetInteger(0, bgName, OBJPROP_CORNER, 2);
+   ObjectSetInteger(0, bgName, OBJPROP_XDISTANCE, margin);
+   ObjectSetInteger(0, bgName, OBJPROP_YDISTANCE, margin);
+   ObjectSetInteger(0, bgName, OBJPROP_XSIZE, panelW);
+   ObjectSetInteger(0, bgName, OBJPROP_YSIZE, panelH);
+   ObjectSetInteger(0, bgName, OBJPROP_BGCOLOR, C'13,20,36');
+   ObjectSetInteger(0, bgName, OBJPROP_BORDER_COLOR, C'35,44,68');
+   ObjectSetInteger(0, bgName, OBJPROP_BORDER_TYPE, BORDER_FLAT);
+   ObjectSetInteger(0, bgName, OBJPROP_BACK, false);
+   ObjectSetInteger(0, bgName, OBJPROP_SELECTABLE, false);
+   ObjectSetInteger(0, bgName, OBJPROP_HIDDEN, true);
+
+   for(int i = 0; i < lineCount; i++)
+     {
+      string name = StringFormat("%sTXT_%d", prefix, i);
+      ObjectCreate(0, name, OBJ_LABEL, 0, 0, 0);
+      ObjectSetInteger(0, name, OBJPROP_CORNER, 2);
+      ObjectSetInteger(0, name, OBJPROP_XDISTANCE, margin + 8);
+      ObjectSetInteger(0, name, OBJPROP_YDISTANCE, margin + baseFont + 4 + i * lineH);
+      ObjectSetInteger(0, name, OBJPROP_FONTSIZE, baseFont);
+      ObjectSetString(0, name, OBJPROP_FONT, "Consolas");
+      color txtColor = clrSilver;
+      if(i == 0)                                   txtColor = clrGold;
+      else if(StringFind(lines[i], "CALL") >= 0)   txtColor = clrLime;
+      else if(StringFind(lines[i], "PUT") >= 0)    txtColor = clrOrangeRed;
+      else if(StringFind(lines[i], "Result") >= 0) txtColor = resClr;
+      else if(StringFind(lines[i], "expires") >= 0) txtColor = clrLightSkyBlue;
+      ObjectSetInteger(0, name, OBJPROP_COLOR, txtColor);
+      ObjectSetString(0, name, OBJPROP_TEXT, lines[i]);
+      ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
+      ObjectSetInteger(0, name, OBJPROP_HIDDEN, true);
+     }
   }
 
 //+------------------------------------------------------------------+

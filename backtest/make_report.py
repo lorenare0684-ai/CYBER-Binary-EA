@@ -60,7 +60,8 @@ def ny_minute(gmt_dt):
     return t.hour * 60 + t.minute, t.weekday()
 
 
-def micro_sim(dd_list, put_win, call_win, put_k, call_k, no_friday, call_enabled):
+def micro_sim(dd_list, put_win, call_win, put_k, call_k, no_friday, call_enabled,
+             skip_monday=False):
     trades = []
     for pname, dd in dd_list:
         c = dd["c"]
@@ -71,6 +72,8 @@ def micro_sim(dd_list, put_win, call_win, put_k, call_k, no_friday, call_enabled
             ny_m, wd = ny_minute(gmt)
             if no_friday and wd == 4:
                 continue
+            if skip_monday and wd == 0:
+                continue
             if put_win[0] <= ny_m <= put_win[1]:
                 dir_, k = -1, put_k
             elif call_enabled and call_win[0] <= ny_m <= call_win[1]:
@@ -80,7 +83,7 @@ def micro_sim(dd_list, put_win, call_win, put_k, call_k, no_friday, call_enabled
             fwd = c[i + k] - c[i]
             res = "W" if (fwd > 0 and dir_ == 1) or (fwd < 0 and dir_ == -1) else \
                   ("L" if (fwd < 0 and dir_ == 1) or (fwd > 0 and dir_ == -1) else "T")
-            trades.append([pname, dir_, res, dt[i].strftime("%Y-%m")])
+            trades.append([pname, dir_, res, dt[i].strftime("%Y-%m-%d")])
     return trades
 
 
@@ -90,14 +93,15 @@ def summarize(tr):
     acc = w / (w + l) * 100 if (w + l) else 0.0
     mb = {}
     for t in tr:
-        mb.setdefault(t[3], [0, 0])
+        m = t[3][:7]
+        mb.setdefault(m, [0, 0])
         if t[2] == "W":
-            mb[t[3]][0] += 1
+            mb[m][0] += 1
         elif t[2] == "L":
-            mb[t[3]][1] += 1
+            mb[m][1] += 1
     months = {m: (mb[m][0] / sum(mb[m]) * 100 if sum(mb[m]) else float("nan")) for m in sorted(mb)}
-    fa = [t for t in tr if t[3] in ("2026-02", "2026-03", "2026-04")]
-    mj = [t for t in tr if t[3] in ("2026-05", "2026-06", "2026-07")]
+    fa = [t for t in tr if t[3][:7] in ("2026-02", "2026-03", "2026-04")]
+    mj = [t for t in tr if t[3][:7] in ("2026-05", "2026-06", "2026-07")]
     def acc2(sel):
         ww = sum(1 for t in sel if t[2] == "W")
         ll = sum(1 for t in sel if t[2] == "L")
@@ -219,16 +223,21 @@ def main():
     gbp5 = resample(load_csv("data/GBPUSD_1m.csv"), "5min")
     usd5 = load_csv("data/USDJPY_5m.csv")
     eur5 = load_csv("data/EURUSD_5m.csv")
-    micro_sets = [("GBPUSD", gbp5), ("USDJPY", usd5)]
+    jpy5 = resample(load_csv("data/EURJPY_1m.csv"), "5min")
+    gbpcr5 = resample(load_csv("data/EURGBP_1m.csv"), "5min")
+    aud5 = resample(load_csv("data/AUDUSD_1m.csv"), "5min")
+    micro_sets = [("GBPUSD", gbp5), ("USDJPY", usd5), ("EURJPY", jpy5), ("EURGBP", gbpcr5)]
     micro = {}
-    micro["flagship"] = summarize(micro_sim(micro_sets, (995, 1010), (1070, 1080), 4, 2, True, False))
-    micro["all_days"] = summarize(micro_sim(micro_sets, (995, 1010), (1070, 1080), 4, 2, False, False))
-    micro["with_call"] = summarize(micro_sim(micro_sets, (995, 1010), (1070, 1080), 4, 2, True, True))
+    micro["flagship"] = summarize(micro_sim(micro_sets, (995, 1010), (1070, 1080), 5, 2, True, False))
+    micro["all_days"] = summarize(micro_sim(micro_sets, (995, 1010), (1070, 1080), 5, 2, False, False))
+    micro["no_monday"] = summarize(micro_sim(micro_sets, (995, 1010), (1070, 1080), 5, 2, True, False, True))
+    micro["with_call"] = summarize(micro_sim(micro_sets, (995, 1010), (1070, 1080), 5, 2, True, True))
+    micro["with_aud"] = summarize(micro_sim(micro_sets + [("AUDUSD", aud5)], (995, 1010), (1070, 1080), 5, 2, True, False))
     micro["per_pair"] = {}
-    for pname, dd in micro_sets:
-        micro["per_pair"][pname] = summarize(micro_sim([(pname, dd)], (995, 1010), (1070, 1080), 4, 2, True, False))
+    for pname, dd in micro_sets + [("AUDUSD", aud5), ("EURUSD", eur5)]:
+        micro["per_pair"][pname] = summarize(micro_sim([(pname, dd)], (995, 1010), (1070, 1080), 5, 2, True, False))
 
-    md.append("## 6. Micro-Fix strategy (flagship, 80%+)")
+    md.append("## 6. Micro-Fix strategy (flagship, 85%+)")
     md.append("")
     md.append("**Mechanism.** The 30 minutes before the 17:00 New York CME/futures "
               "settlement show a reproducible dip (16:35-16:50 NY) followed by a rally "
@@ -238,9 +247,11 @@ def main():
     md.append("")
     md.append("| Variant | Trades | Accuracy | PF | Feb-Apr | May-Jul (OOS) |")
     md.append("|---------|--------|----------|----|---------|---------------|")
-    for key, label in [("flagship", "PUT 16:35-16:50 NY, 20-min expiry, no Fridays (default)"),
-                       ("all_days", "PUT 16:35-16:50 NY, 20-min expiry, all days"),
-                       ("with_call", "PUT + CALL (17:50-18:00 NY, 10-min), no Fridays")]:
+    for key, label in [("flagship", "PUT 16:35-16:50 NY, 25-min expiry, no Fridays, 4 assets (default)"),
+                       ("no_monday", "Flagship + skip Mondays"),
+                       ("with_call", "PUT + CALL (17:50-18:00 NY, 10-min), no Fridays"),
+                       ("with_aud", "5 assets (incl. AUDUSD)"),
+                       ("all_days", "PUT, all days, 4 assets")]:
         m = micro[key]
         md.append(f"| {label} | {m['trades']} | **{m['accuracy']}%** | {m['pf']} | "
                   f"{m['fa'][0]:.1f}% (n={m['fa'][1]}) | **{m['mj'][0]:.1f}%** (n={m['mj'][1]}) |")
@@ -248,9 +259,13 @@ def main():
     md.append("Monthly accuracy (flagship): " + " | ".join(
         f"{m[5:]}:{micro['flagship']['months'][m]:.0f}%" for m in sorted(micro['flagship']['months'])))
     md.append("")
-    md.append("Per pair (flagship): " + " | ".join(
+    md.append("Per pair (flagship, k=5): " + " | ".join(
         f"{p}: {micro['per_pair'][p]['accuracy']}% (n={micro['per_pair'][p]['trades']})"
-        for p in micro['per_pair']))
+        for p in ["EURJPY", "GBPUSD", "USDJPY", "EURGBP", "AUDUSD", "EURUSD"]))
+    md.append("")
+    md.append("**Signal frequency:** 4 signals per asset per day (16:35, 16:40, 16:45, "
+              "16:50 NY bars) = 16 signals/day on the 4-asset flagship, ~16 per day, "
+              "Mon-Thu only.")
     md.append("")
     md.append("## 7. Risk notes (read before live trading)")
     md.append("")

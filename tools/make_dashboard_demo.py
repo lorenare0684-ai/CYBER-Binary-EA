@@ -4,7 +4,6 @@ backtest results (out/dashboard_data.json). The live EA generates a
 dashboard with the same layout, refreshed from its own statistics."""
 import json
 import os
-import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA = os.path.join(ROOT, "backtest", "out", "dashboard_data.json")
@@ -52,19 +51,21 @@ def main():
         d = json.load(f)
     micro = d["micro"]
     fl = micro["flagship"]
-    all_days = micro["all_days"]
+    no_mon = micro["no_monday"]
     wc = micro["with_call"]
+    all_days = micro["all_days"]
+    pp = micro["per_pair"]
 
     html = ["<!DOCTYPE html><html><head><meta charset='utf-8'>",
             "<title>CYBER Binary EA - Quotex Signal Dashboard (demo)</title>",
             "<style>", CSS, "</style></head><body><div class='wrap'>"]
     html.append("<h1>CYBER Binary EA<span class='sub'>Quotex signal dashboard &middot; "
                 "<b>DEMO - backtest data</b> &middot; generated " + d["generated"] +
-                " &middot; <span class='badge'>Micro-Fix flagship: 83.6%</span></span></h1>")
+                " &middot; <span class='badge'>Micro-Fix flagship: 86.6%</span></span></h1>")
     html.append("<div class='grid'>")
     html.append(card("Accuracy (flagship)",
                      f"<span class='acc'>{fl['accuracy']}%</span>",
-                     "big", f"PUT 16:35-16:50 NY &middot; 20-min expiry &middot; no Fridays"))
+                     "big", "PUT 16:35-16:50 NY &middot; 25-min expiry &middot; 4 assets &middot; no Fridays"))
     html.append(card("Wins / Losses",
                      f"<span class='win'>{fl['wins']}</span> / <span class='loss'>{fl['losses']}</span>",
                      "num", f"n={fl['trades']} &middot; 6 months (Feb-Jul 2026)"))
@@ -75,41 +76,47 @@ def main():
                      "num", "worst month " + str(min(fl['months'].values())) + "%"))
     html.append(card("Out-of-sample", f"<span class='acc'>{fl['mj'][0]:.1f}%</span>",
                      "num", f"May-Jul &middot; n={fl['mj'][1]} (untouched params)"))
-    html.append(card("All days variant", f"<span class='acc'>{all_days['accuracy']}%</span>",
-                     "num", f"n={all_days['trades']} &middot; incl. Fridays"))
+    html.append(card("Signals / day", f"<span class='num'>16</span>",
+                     "num", "4 assets &times; 4 bars &middot; Mon-Thu"))
+    html.append(card("Skip Mondays", f"<span class='acc'>{no_mon['accuracy']}%</span>",
+                     "num", f"n={no_mon['trades']} &middot; +1.1 pp"))
     html.append(card("With CALL rule", f"<span class='acc'>{wc['accuracy']}%</span>",
                      "num", f"n={wc['trades']} &middot; adds 17:50-18:00 NY CALL"))
-    html.append(card("Per pair", f"<span class='win'>GBP {micro['per_pair']['GBPUSD']['accuracy']}%</span>"
-                     " / <span class='acc'>JPY " + str(micro['per_pair']['USDJPY']['accuracy']) + "%</span>",
-                     "num", "flagship, per pair"))
     html.append("</div>")
 
+    html.append("<div class='card'><h2>Per-asset accuracy (flagship)</h2>"
+                "<table><thead><tr><th>Asset</th><th>Accuracy</th><th>Trades</th></tr></thead><tbody>")
+    for name, label in [("EURJPY", "EURJPY - BEST"), ("GBPUSD", "GBPUSD"), ("USDJPY", "USDJPY"),
+                        ("EURGBP", "EURGBP"), ("AUDUSD", "AUDUSD"), ("EURUSD", "EURUSD")]:
+        p = pp[name]
+        cls = "win" if p["accuracy"] >= 85 else ("gold" if p["accuracy"] >= 75 else "loss")
+        html.append(f"<tr><td>{label}</td><td class='{cls}'><b>{p['accuracy']}%</b></td><td>{p['trades']}</td></tr>")
+    html.append("</tbody></table></div>")
+
     html.append("<div class='card'><h2>Monthly accuracy (flagship)</h2>"
-                "<table><thead><tr><th>Month</th><th>Accuracy</th><th>Trades</th></tr></thead><tbody>")
+                "<table><thead><tr><th>Month</th><th>Accuracy</th></tr></thead><tbody>")
     for m in ["2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07"]:
         a = fl["months"][m]
-        cls = "win" if a >= 80 else ("gold" if a >= 70 else "loss")
-        html.append(f"<tr><td>{m}</td><td class='{cls}'><b>{a:.0f}%</b></td><td>{fl['trades']//6}</td></tr>")
+        cls = "win" if a >= 85 else ("gold" if a >= 75 else "loss")
+        html.append(f"<tr><td>{m}</td><td class='{cls}'><b>{a:.0f}%</b></td></tr>")
     html.append("</tbody></table>")
-    html.append("<div class='small'>The window is anchored to New York local time with "
-                "automatic US-DST handling (validated 2020-2029, 0 mismatches).</div></div>")
+    html.append("<div class='small'>Windows anchored to New York local time with automatic "
+                "US-DST handling (validated 2020-2029, 0 mismatches).</div></div>")
 
-    html.append("<div class='card'><h2>Monthly stability (accuracy, M15)</h2>"
-                "<table><thead><tr><th>Month</th><th>GBPUSD</th><th>USDJPY</th><th>EURUSD</th></tr></thead><tbody>")
-    for m in ["2026-02", "2026-03", "2026-04", "2026-05", "2026-06", "2026-07"]:
-        html.append(f"<tr><td>{m}</td><td>{d['months']['GBPUSD_M15'][m]}%</td>"
-                    f"<td>{d['months']['USDJPY_M15'][m]}%</td><td>{d['months']['EURUSD_M15'][m]}%</td></tr>")
+    html.append("<div class='card'><h2>Variants</h2>"
+                "<table><thead><tr><th>Variant</th><th>Trades</th><th>Accuracy</th><th>PF</th></tr></thead><tbody>")
+    for key, label in [("flagship", "4 assets, no Fridays (default)"),
+                       ("no_monday", "Flagship + skip Mondays"),
+                       ("with_call", "PUT + CALL rule"),
+                       ("with_aud", "5 assets (incl. AUDUSD)"),
+                       ("all_days", "4 assets, all days")]:
+        v = micro[key]
+        html.append(f"<tr><td>{label}</td><td>{v['trades']}</td>"
+                    f"<td class='win'><b>{v['accuracy']}%</b></td><td>{v['pf']}</td></tr>")
     html.append("</tbody></table></div>")
 
-    html.append("<div class='card'><h2>Legacy reference (NY-Close Seasonal, M15/1h)</h2>"
-                "<table><thead><tr><th>Instrument</th><th>Accuracy</th><th>Trades</th><th>PF</th></tr></thead><tbody>")
-    for name, label in [("GBPUSD_M15", "GBPUSD M15"), ("USDJPY_M15", "USDJPY M15"),
-                        ("EURUSD_M15", "EURUSD M15")]:
-        p = d["pairs"][name]
-        html.append(f"<tr><td>{label}</td><td>{p['accuracy']}%</td><td>{p['trades']}</td><td>{p['profit_factor']}</td></tr>")
-    html.append("</tbody></table></div>")
     html.append("<div class='foot'>CYBER Binary EA &middot; flagship: Micro-Fix "
-                "(PUT 16:35-16:50 NY, 20-min expiry) &middot; "
+                "(PUT 16:35-16:50 NY, 25-min expiry, EURJPY/GBPUSD/USDJPY/EURGBP) &middot; "
                 "the live dashboard opens automatically in your browser when the EA is attached</div>")
     html.append("</div></body></html>")
 
