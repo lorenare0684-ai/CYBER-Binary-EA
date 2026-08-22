@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#060b18" />
+    <title>Quotex Signal Lab — Cyber Binary</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark"><span></span><span></span><span></span></div>
+          <div><strong>QUOTEX</strong><small>SIGNAL LAB</small></div>
+        </div>
+        <div class="side-label">WORKSPACE</div>
+        <nav>
+          <a class="nav-item active" href="#overview"><span class="nav-icon">⌁</span>Dashboard</a>
+          <a class="nav-item" href="#signals"><span class="nav-icon">↗</span>Signals <b class="nav-badge">02</b></a>
+          <a class="nav-item" href="#analytics"><span class="nav-icon">▥</span>Analytics</a>
+          <a class="nav-item" href="#history"><span class="nav-icon">◷</span>Trade history</a>
+        </nav>
+        <div class="side-label settings-label">SYSTEM</div>
+        <nav>
+          <a class="nav-item" href="#settings"><span class="nav-icon">⚙</span>Settings</a>
+          <a class="nav-item" href="#help"><span class="nav-icon">?</span>Help center</a>
+        </nav>
+        <div class="sidebar-footer">
+          <div class="connection"><i></i><span><b>Engine connected</b><small>Last sync 12:48:09</small></span></div>
+          <div class="profile"><div class="avatar">JD</div><span><b>J. Doe</b><small>Pro account</small></span><span class="dots">···</span></div>
+        </div>
+      </aside>
+
+      <main class="main" id="overview">
+        <header class="topbar">
+          <div class="crumbs"><span>WORKSPACE</span><b>/</b><strong>LIVE TRADING</strong></div>
+          <div class="top-actions"><div class="live-pill"><i></i>LIVE <span>·</span> DEMO</div><button class="icon-btn" aria-label="Notifications">♧<em></em></button><button class="icon-btn" aria-label="Theme">☼</button></div>
+        </header>
+
+        <section class="hero">
+          <div><div class="eyebrow"><span class="green-dot"></span> MARKET SCANNER / ONLINE</div><h1>Cyber Binary <span>signals</span></h1><p>High-frequency market intelligence, made readable.</p></div>
+          <div class="hero-controls"><button class="control-btn" id="autoScanBtn"><span class="play">▶</span> Auto-scan <span class="switch on"><i></i></span></button><button class="control-btn" id="settingsBtn">⌘&nbsp; Settings</button></div>
+        </section>
+
+        <section class="stats-grid">
+          <article class="stat-card accent"><div class="stat-top"><span>ACCOUNT BALANCE</span><span class="stat-icon">◈</span></div><div class="stat-value">$10,000.00</div><div class="stat-foot positive">↑ 2.4% <small>since yesterday</small></div></article>
+          <article class="stat-card"><div class="stat-top"><span>WIN RATE</span><span class="stat-icon">↗</span></div><div class="stat-value">0.0<span class="unit">%</span></div><div class="stat-foot muted">No completed trades</div></article>
+          <article class="stat-card"><div class="stat-top"><span>ACCURACY</span><span class="stat-icon">◎</span></div><div class="stat-value">0.0<span class="unit">%</span></div><div class="stat-foot muted">Awaiting signal data</div></article>
+          <article class="stat-card compact"><div class="stat-top"><span>SESSION RESULTS</span><span class="stat-icon">▤</span></div><div class="result-row"><div><strong>0</strong><small>WINS</small></div><div class="result-divider"></div><div><strong class="loss">0</strong><small>LOSSES</small></div></div><div class="stat-foot muted">Live session</div></article>
+        </section>
+
+        <section class="workspace-grid">
+          <article class="panel chart-panel">
+            <div class="panel-header"><div><div class="panel-kicker"><span class="pulse"></span> LIVE MARKET</div><h2>EUR / USD <span class="pair-tag">OTC</span></h2></div><div class="market-price"><strong id="price">1.08542</strong><span class="positive">+0.00124&nbsp; (+0.11%)</span></div></div>
+            <div class="chart-toolbar"><div class="timeframes"><button>1m</button><button class="selected">5m</button><button>15m</button><button>1h</button></div><div class="chart-tools"><span>Indicators</span><span>⌄</span><span>⛶</span></div></div>
+            <div class="chart-wrap"><canvas id="chart" aria-label="EUR USD live candlestick chart"></canvas><div class="chart-axis"><span>1.0870</span><span>1.0860</span><span>1.0850</span><span>1.0840</span></div><div class="chart-time"><span>12:15</span><span>12:25</span><span>12:35</span><span>12:45</span><span>NOW</span></div><div class="chart-overlay"><span class="signal-marker">↗ BUY <small>84%</small></span></div></div>
+            <div class="chart-footer"><span><i class="legend candle-up"></i>Up</span><span><i class="legend candle-down"></i>Down</span><span class="foot-note">Data updates every 5 seconds</span><span class="last-update">● Updated just now</span></div>
+          </article>
+
+          <article class="panel signal-panel" id="signals"><div class="panel-header signal-heading"><div><div class="panel-kicker"><span class="pulse amber"></span> SIGNAL ENGINE</div><h2>Next signal</h2></div><span class="confidence">READY</span></div><div class="asset-detect"><div><span class="asset-label">AUTO-DETECTED ASSET</span><strong id="assetName">EUR / USD <small>OTC</small></strong></div><button id="rescanBtn">↻ Rescan</button></div><div class="signal-empty"><div class="orb"><div class="orb-inner"><span>⌁</span></div></div><h3>Calibrating market</h3><p>Need at least <strong>40 candles</strong><br />to generate a reliable signal.</p><div class="progress-line"><span style="width: 63%"></span></div><div class="progress-label"><span>25 / 40 candles</span><span>63%</span></div></div><div class="signal-meta"><div><span>MODE</span><b>Conservative</b></div><div><span>EXPIRY</span><b>5 minutes</b></div><div><span>EDGE</span><b>—</b></div><button class="refresh" aria-label="Refresh scan">↻</button></div></article>
+        </section>
+
+        <section class="automation-grid" id="automation">
+          <article class="panel automation-panel"><div class="panel-header"><div><div class="panel-kicker"><span class="pulse"></span> EXECUTION CONTROL</div><h2>Trade automation</h2></div><div class="paper-badge">PAPER MODE</div></div>
+            <div class="automation-status"><div class="automation-icon">⏱</div><div><strong id="automationState">Automation paused</strong><p>Signals will be executed only when all safety rules pass.</p></div><button class="primary-btn" id="automationToggle">Enable automation</button></div>
+            <div class="guardrails"><div><span>Risk per trade</span><b>1.0%</b></div><div><span>Daily loss limit</span><b>$200.00</b></div><div><span>Max open trades</span><b>2</b></div><div><span>Cooldown</span><b>5 min</b></div></div>
+            <div class="safety-note">▣ <span>Protected by conservative risk controls</span><button id="editRisk">Edit rules</button></div>
+          </article>
+          <article class="panel watchlist-panel"><div class="panel-header"><div><div class="panel-kicker">MARKET OPPORTUNITIES</div><h2>Asset detector</h2></div><span class="scan-time">Scanning live</span></div>
+            <div class="asset-list"><button class="asset-row selected" data-asset="EUR / USD" data-price="1.08542"><span class="asset-symbol">EU</span><span><b>EUR / USD</b><small>OTC · 5m</small></span><strong>84% <i>BUY</i></strong></button><button class="asset-row" data-asset="GBP / USD" data-price="1.26831"><span class="asset-symbol purple">GB</span><span><b>GBP / USD</b><small>OTC · 5m</small></span><strong>71% <i class="neutral">WAIT</i></strong></button><button class="asset-row" data-asset="USD / JPY" data-price="156.822"><span class="asset-symbol amber-icon">JP</span><span><b>USD / JPY</b><small>OTC · 5m</small></span><strong>66% <i class="neutral">WAIT</i></strong></button></div>
+          </article>
+        </section>
+
+        <section class="backtest-panel panel" id="history">
+          <div class="panel-header"><div><div class="panel-kicker"><span class="pulse"></span> HISTORICAL VALIDATION / DEMO</div><h2>Accuracy on historic data</h2><p class="panel-subtitle">Walk-forward results using completed candles — sample mode, ready for a connected data feed.</p></div><div class="backtest-controls"><select id="historyRange"><option value="7">Last 7 days</option><option value="30" selected>Last 30 days</option><option value="90">Last 90 days</option></select><button class="run-backtest" id="runBacktest">Run backtest</button></div></div>
+          <div class="history-metrics"><div><span>HISTORIC ACCURACY</span><strong id="historyAccuracy">68.4%</strong><small>68 wins / 31 losses</small></div><div><span>PROFITABLE DAYS</span><strong id="profitableDays">21 / 30</strong><small>70.0% consistency</small></div><div><span>MAX DRAWDOWN</span><strong class="amber-text">−4.8%</strong><small>within configured limit</small></div><div><span>EXPECTANCY</span><strong class="green-text">+0.37R</strong><small>per qualified signal</small></div></div>
+          <div class="history-chart"><div class="history-y"><span>+12%</span><span>+6%</span><span>0%</span><span>−6%</span></div><canvas id="historyCanvas"></canvas><div class="history-x"><span>JUN 01</span><span>JUN 10</span><span>JUN 20</span><span>JUN 30</span></div></div>
+          <div class="history-foot"><span>◆ Sample run on <b id="candleCount">2,880</b> candles</span><span>Model: Conservative · 5m expiry</span><span class="disclaimer">Past performance does not guarantee future results</span></div>
+        </section>
+        <section class="lower-grid" id="analytics"><article class="panel performance"><div class="panel-header"><div><div class="panel-kicker">SESSION OVERVIEW</div><h2>Performance</h2></div><select><option>Today</option><option>This week</option></select></div><div class="performance-body"><div class="big-zero">0.00% <small>net return</small></div><div class="bar-chart"><div class="bar-grid"><i></i><i></i><i></i><i></i></div><div class="bars"><span style="height:13%"></span><span style="height:21%"></span><span style="height:35%"></span><span style="height:27%"></span><span style="height:45%"></span><span style="height:40%"></span><span style="height:53%"></span><span style="height:47%"></span><span style="height:63%"></span><span style="height:55%"></span><span style="height:73%"></span><span style="height:68%"></span></div><div class="bar-labels"><span>09:00</span><span>11:00</span><span>13:00</span><span>15:00</span></div></div></div></article><article class="panel quick-stats"><div class="panel-kicker">SYSTEM HEALTH</div><h2>All systems normal</h2><div class="health-list"><div><span>Market feed</span><b><i></i> Connected</b></div><div><span>Signal engine</span><b><i></i> Standby</b></div><div><span>Risk monitor</span><b><i></i> Active</b></div></div></article></section>
+        <footer id="history">CYBER BINARY <span>•</span> Built for precision <span class="footer-right">v2.4.0</span></footer>
+      </main>
+    </div>
+    <script src="app.js"></script>
+  </body>
+</html>
