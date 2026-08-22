@@ -116,14 +116,21 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    charts) so it never covers the price chart.
 
    **Historical painting (`PaintHistorySignals=true`, default):** the EA
-   scans the chart's own closed bars (last `HistorySignalBars` = 10,000 by
-   default, ~35 days on M5) and paints an arrow at every historical price
-   where the micro-fix rule would have fired — even on a brand-new chart with
-   no saved statistics. It uses the same shared window logic as live signals
-   (per-bar US-DST so winter/summer bars are placed correctly, Friday/Monday
-   filters, precision/wide mode) and skips bars that already carry a live
-   arrow. Expect ~56 arrows on EURJPY/GBPUSD, ~28 on USDJPY over 10,000 M5
-   bars; raise `HistorySignalBars` to paint deeper history.
+   scans the chart's own closed bars — **all of them by default** (full
+   coverage: `HistorySignalBars=0` = every bar the terminal can provide, up
+   to ~13 years on M5; set a positive value to limit the scan) — and paints
+   an arrow at every historical price where the micro-fix rule would have
+   fired, even on a brand-new chart with no saved statistics. It uses the
+   same shared window logic as live signals (per-bar US-DST so winter/summer
+   bars are placed correctly, Friday/Monday filters, precision/wide mode)
+   and skips bars that already carry a live arrow. The full dataset
+   (~6 months of M5) yields 208 signals on EURJPY (93.3%), 104 on USDJPY
+   (91.3%) and 208 on GBPUSD (88.8%) — the exact backtest numbers; deeper
+   broker history will add more (older years may differ from the 2026-tuned
+   windows). `CopyRates` triggers a background download, so a fresh chart
+   grows to full coverage within a few refreshes. In the Strategy Tester
+   `0` means 10,000 bars so tests stay fast — raise the input explicitly
+   for deeper tester coverage.
 
    **Dashboard statistics always combine live + historical data.** The
    on-chart panel and the HTML dashboard resolve every painted historical
@@ -146,6 +153,12 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    accuracy; the old shared file is left untouched. Live-only dashboard
    fields (CALL/PUT, streaks, rules) are labelled "(live)" and show a
    "no live trades yet" hint instead of a bare 0/0.
+
+   **v1.38 — full coverage by default:** `HistorySignalBars` now defaults to
+   `0`, which scans **all** history the terminal can provide (1,000,000 M5
+   bars ≈ 13 years) instead of the old 10,000-bar (~35-day) window; a cheap
+   no-change check skips the heavy work between scans, and the Strategy
+   Tester falls back to 10,000 bars when `0` so backtests stay fast.
 
 ## Using the signals on Quotex
 

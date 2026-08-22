@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.37"
+#property version   "1.38"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -88,7 +88,7 @@ input int    MicroPutEndMin       = 1010;        // PUT window end   (NY minutes
 input int    MicroPutExpiryBars   = 5;           // PUT expiry in bars (5 = 25 min on M5) [used in wide mode]
 input bool   MicroNoMonday        = false;       // Also skip Mondays (+1.1 pp, -25% signals)
 input bool   PaintHistorySignals  = true;        // Paint rule arrows on chart history (no saved trades needed)
-input int    HistorySignalBars    = 10000;       // Bars of chart history scanned for painted signals
+input int    HistorySignalBars    = 0;           // Bars of chart history to scan (0 = ALL available - full coverage; tester uses 10000 when 0)
 input bool   MicroCallEnabled     = false;       // Also trade the 17:50-18:00 NY CALL (adds 72-74% signals)
 input int    MicroCallStartMin    = 1070;        // CALL window start (NY minutes: 17:50)
 input int    MicroCallEndMin      = 1080;        // CALL window end   (NY minutes: 18:00)
@@ -189,7 +189,7 @@ int               g_histWins     = 0;
 int               g_histLosses   = 0;
 int               g_histScratches = 0;
 int               g_histScanned  = 0;    // closed bars actually scanned
-int               g_lastHistCount  = 0;  // bars of the last scan
+int               g_lastHistCached = 0;  // cached bars at the last scan
 datetime          g_lastHistNewest = 0;  // newest bar time of the last scan
 bool              g_histPainted   = false;
 int               g_lastReportedBars = 0; // last coverage reported in the log
@@ -199,7 +199,7 @@ int               g_lastReportedBars = 0; // last coverage reported in the log
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   Print("CYBER Binary EA v1.37 starting on ", _Symbol, " ", EnumToString(Period()));
+   Print("CYBER Binary EA v1.38 starting on ", _Symbol, " ", EnumToString(Period()));
 
    //--- validate inputs
    if(ExpiryBars < 1)
@@ -277,7 +277,7 @@ int OnInit()
    g_lastBarTime = iTime(_Symbol, PERIOD_CURRENT, 0);
    g_initOk      = true;
    g_histPainted = false;      // force a fresh scan + repaint on every attach
-   g_lastHistCount = 0;
+   g_lastHistCached = 0;
    g_lastHistNewest = 0;
    g_lastReportedBars = 0;
    DrawHistoryMarkers();
@@ -991,23 +991,32 @@ void DrawHistorySignals()
    if(!PaintHistorySignals)
       return;
 
-   //--- CopyRates also triggers the terminal to DOWNLOAD chart history, so
-   //--- the scan covers the full requested range even on a freshly attached
-   //--- chart (which only has a few hundred/thousand cached bars otherwise)
+   //--- cheap check on the cached series BEFORE the (possibly large) copy:
+   //--- same bars as the last scan -> arrows + statistics are up to date
+   int cachedBars = Bars(_Symbol, PERIOD_CURRENT);
+   datetime newest = iTime(_Symbol, PERIOD_CURRENT, 0);
+   if(g_histPainted && cachedBars == g_lastHistCached && newest == g_lastHistNewest)
+      return;
+
+   //--- FULL COVERAGE by default: HistorySignalBars=0 scans ALL history the
+   //--- terminal can provide (1,000,000 M5 bars ~ 13 years - effectively
+   //--- unlimited). CopyRates also triggers the background DOWNLOAD of the
+   //--- requested range, so even a fresh chart grows to full coverage within
+   //--- a few refreshes. In the Strategy Tester 0 means 10000 bars so tests
+   //--- stay fast (raise the input explicitly for deeper tester coverage).
+   int want = HistorySignalBars;
+   if(want <= 0)
+      want = (MQLInfoInteger(MQL_TESTER) != 0) ? 10000 : 1000000;
+
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
-   int got = CopyRates(_Symbol, PERIOD_CURRENT, 0, HistorySignalBars, rates);
+   int got = CopyRates(_Symbol, PERIOD_CURRENT, 0, want, rates);
    if(got < 2)
       return;
 
-   //--- exactly the same bars as the last scan? arrows + statistics are
-   //--- already up to date - keep them (no flicker, no wasted work)
-   if(g_histPainted && got == g_lastHistCount && rates[0].time == g_lastHistNewest)
-      return;
-
    ObjectsDeleteAll(0, MARKER_PREFIX + "HS");
-   g_lastHistCount  = got;
-   g_lastHistNewest = rates[0].time;
+   g_lastHistCached = cachedBars;
+   g_lastHistNewest = newest;
    g_histScanned    = got - 1;      // index 0 = current forming bar, not scanned
 
    datetime gmtOffset = TimeCurrent() - TimeGMT();
