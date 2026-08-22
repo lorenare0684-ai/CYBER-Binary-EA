@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.41"
+#property version   "1.42"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -206,7 +206,7 @@ int               g_profVerdict   = 0;    // 0=scanning 1=real 2=shifted 3=no pa
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   Print("CYBER Binary EA v1.41 starting on ", _Symbol, " ", EnumToString(Period()));
+   Print("CYBER Binary EA v1.42 starting on ", _Symbol, " ", EnumToString(Period()));
 
    //--- validate inputs
    if(ExpiryBars < 1)
@@ -309,7 +309,8 @@ int OnInit()
          " | panel corner ", PanelCorner,
          (MQLInfoInteger(MQL_TESTER) ? " (tester layout)" : " (live layout)"),
          " | PaintHistorySignals ", PaintHistorySignals);
-   Print("CYBER: server offset from GMT ", (int)(TimeCurrent() - TimeGMT()) / 3600,
+   Print("CYBER: server offset from GMT ",
+         DoubleToString((TimeCurrent() - TimeGMT()) / 3600.0, 2),
          "h | stats file ", g_logFile,
          " | detected: ", DetectedModeText());
    if(!IsValidatedPair())
