@@ -125,6 +125,14 @@ tools/make_dashboard_demo.py    regenerates the dashboard demo
    arrow. Expect ~56 arrows on EURJPY/GBPUSD, ~28 on USDJPY over 10,000 M5
    bars; raise `HistorySignalBars` to paint deeper history.
 
+   **Dashboard statistics always combine live + historical data.** The
+   on-chart panel and the HTML dashboard resolve every painted historical
+   signal at its expiry (same exact-expiry policy as live) and show the
+   combined accuracy, wins/losses, net P&L and profit factor, with a
+   `Live W/L · Hist W/L` breakdown line — so right after attaching, the
+   numbers already reflect the full recent history of the rule on that
+   chart, not just trades you watched happen.
+
 ## Using the signals on Quotex
 
 1. When an arrow appears (or an Alert pops), open the same asset on Quotex.

@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.35"
+#property version   "1.36"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -182,6 +182,12 @@ int               g_lastTradeBar = -1000000;
 bool              g_initOk       = false;
 int               g_arrowCount   = 0;
 string            g_logFile      = "CYBER_Binary_EA_trades.csv";
+
+//--- historical statistics (painted rule signals resolved on chart data)
+int               g_histTrades   = 0;
+int               g_histWins     = 0;
+int               g_histLosses   = 0;
+int               g_histScratches = 0;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                    |
@@ -929,6 +935,12 @@ void DrawHistorySignals()
    int nt = ArraySize(g_trades);
    int labeled = 0;
 
+   //--- recompute the historical statistics on every scan
+   g_histTrades = 0;
+   g_histWins   = 0;
+   g_histLosses = 0;
+   g_histScratches = 0;
+
    for(int shift = 1; shift < start; shift++)
      {
       datetime barTime = iTime(_Symbol, PERIOD_CURRENT, shift);
@@ -968,6 +980,26 @@ void DrawHistorySignals()
       string tip = StringFormat("%s %s | Micro-Fix (historical)",
                                 (dir > 0) ? "CALL" : "PUT", _Symbol);
       DrawArrowObject(name, barTime, entry, dir, tip);
+
+      //--- resolve the outcome for the dashboard statistics (same exact-
+      //--- expiry policy as the live ResolvePending: the bar that OPENS at
+      //--- the expiry time decides; missing bar = not counted, matching the
+      //--- backtest)
+      datetime expTime = barTime + (datetime)(expiryBars * PeriodSeconds(PERIOD_CURRENT));
+      int expShift = iBarShift(_Symbol, PERIOD_CURRENT, expTime, true);
+      if(expShift >= 0)
+        {
+         double exitPrice = iClose(_Symbol, PERIOD_CURRENT, expShift);
+         bool win  = (dir < 0) ? (exitPrice < entry) : (exitPrice > entry);
+         bool loss = (dir < 0) ? (exitPrice > entry) : (exitPrice < entry);
+         g_histTrades++;
+         if(win)
+            g_histWins++;
+         else if(loss)
+            g_histLosses++;
+         else
+            g_histScratches++;
+        }
 
       //--- small labels on the 3 most recent painted signals only
       if(labeled < 3)
@@ -1247,7 +1279,8 @@ void WriteDashboardHtml()
    string html = BuildHtmlDocument(side, wins, losses, scratches, cancels, acc, winRate,
                                    net, pf, maxDD, callWins, callLosses, putWins, putLosses,
                                    bestStreak, worstStreak, seasonalTrades, burstTrades,
-                                   microTrades, rows);
+                                   microTrades, g_histWins, g_histLosses, g_histScratches,
+                                   g_histTrades, rows);
    int h = FileOpen(DashboardFile, FILE_TXT | FILE_WRITE | FILE_ANSI |
                     FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE)
@@ -1266,11 +1299,23 @@ string BuildHtmlDocument(string side, int wins, int losses, int scratches, int c
                          double acc, double winRate, double net, double pf, double maxDD,
                          int callWins, int callLosses, int putWins, int putLosses,
                          int bestStreak, int worstStreak,
-                         int seasonalTrades, int burstTrades, int microTrades, string rows)
+                         int seasonalTrades, int burstTrades, int microTrades,
+                         int histWins, int histLosses, int histScratches, int histTrades,
+                         string rows)
   {
    int closedAll = wins + losses + scratches + cancels;
-   string netCls = (net >= 0.0) ? "win" : "loss";
-   string netTxt = (net >= 0.0 ? "+" : "") + DoubleToString(net, 2);
+
+   //--- combined live + painted-history statistics
+   int totWins = wins + histWins;
+   int totLosses = losses + histLosses;
+   int totalAll = totWins + totLosses;
+   double accAll = (totalAll > 0) ? 100.0 * totWins / totalAll : 0.0;
+   double netAll = net + histWins * Payout - histLosses * 1.0;
+   double grossWinAll = totWins * Payout;
+   double grossLossAll = (double)totLosses;
+   double pfAll = (grossLossAll > 0.0) ? grossWinAll / grossLossAll : 0.0;
+   string netAllCls = (netAll >= 0.0) ? "win" : "loss";
+   string netAllTxt = (netAll >= 0.0 ? "+" : "") + DoubleToString(netAll, 2);
 
    string html = "<!DOCTYPE html><html><head><meta charset='utf-8'>";
    html += "<meta http-equiv='refresh' content='5'>";
@@ -1310,20 +1355,25 @@ string BuildHtmlDocument(string side, int wins, int losses, int scratches, int c
            TimeToString(TimeCurrent(), TIME_DATE | TIME_MINUTES) +
            " &middot; <span class='badge'>" + side + "</span></span></h1>";
    html += "<div class='grid'>";
-   html += "<div class='card'><h2>Accuracy</h2><div class='big acc'>" + DoubleToString(acc, 1) +
-           "%</div><div class='small'>wins / (wins+losses) &middot; " + IntegerToString(closedAll) +
-           " closed</div></div>";
-   html += "<div class='card'><h2>Win rate</h2><div class='num win'>" + DoubleToString(winRate, 1) +
-           "%</div><div class='small'>wins / all trades</div></div>";
+   html += "<div class='card'><h2>Accuracy (live + history)</h2><div class='big acc'>" +
+           DoubleToString(accAll, 1) +
+           "%</div><div class='small'>" + IntegerToString(totWins) + "W / " +
+           IntegerToString(totLosses) + "L &middot; " + IntegerToString(totalAll) +
+           " closed &middot; live " + IntegerToString(wins + losses) + " + painted history " +
+           IntegerToString(histTrades) + "</div></div>";
+   html += "<div class='card'><h2>Live vs History</h2><div class='num'><span class='win'>" +
+           IntegerToString(wins) + "W/" + IntegerToString(losses) +
+           "L</span> &middot; <span class='acc'>" + IntegerToString(histWins) + "W/" +
+           IntegerToString(histLosses) + "L</span></div><div class='small'>this session / painted from chart data</div></div>";
    html += "<div class='card'><h2>Wins / Losses</h2><div class='num'><span class='win'>" +
-           IntegerToString(wins) + "</span> / <span class='loss'>" + IntegerToString(losses) +
-           "</span></div><div class='small'>ties " + IntegerToString(scratches) +
+           IntegerToString(totWins) + "</span> / <span class='loss'>" + IntegerToString(totLosses) +
+           "</span></div><div class='small'>ties " + IntegerToString(scratches + histScratches) +
            " &middot; skipped " + IntegerToString(cancels) + "</div></div>";
-   html += "<div class='card'><h2>Net P&amp;L</h2><div class='num " + netCls + "'>" + netTxt +
+   html += "<div class='card'><h2>Net P&amp;L</h2><div class='num " + netAllCls + "'>" + netAllTxt +
            "</div><div class='small'>per 1.0 stake @ " + DoubleToString(Payout * 100.0, 0) +
-           "% payout</div></div>";
-   html += "<div class='card'><h2>Profit factor</h2><div class='num gold'>" + DoubleToString(pf, 2) +
-           "</div><div class='small'>max drawdown " + DoubleToString(maxDD, 2) + "</div></div>";
+           "% payout &middot; live + history</div></div>";
+   html += "<div class='card'><h2>Profit factor</h2><div class='num gold'>" + DoubleToString(pfAll, 2) +
+           "</div><div class='small'>combined &middot; max drawdown " + DoubleToString(maxDD, 2) + "</div></div>";
    html += "<div class='card'><h2>CALL / PUT</h2><div class='num'><span class='call'>" +
            IntegerToString(callWins) + "-" + IntegerToString(callLosses) +
            "</span> &middot; <span class='put'>" + IntegerToString(putWins) + "-" +
@@ -1378,7 +1428,7 @@ void UpdatePanel()
 
    //--- tester-aware layout
    bool inTester = (MQLInfoInteger(MQL_TESTER) != 0);
-   int maxLines = inTester ? 8 : 12;
+   int maxLines = inTester ? 9 : 14;
    int margin   = inTester ? 34 : 8;
    int baseFont = inTester
                   ? (int)MathMax(7, MathMin(11, chartW / 130))
@@ -1402,17 +1452,30 @@ void UpdatePanel()
    double winRate = (total + scratches + cancels > 0)
                     ? 100.0 * wins / (total + scratches + cancels) : 0.0;
 
-   string lines[12];
+   //--- combined statistics: LIVE trades (this EA session + CSV) plus the
+   //--- HISTORICAL signals painted from chart data (resolved on the same
+   //--- exact-expiry policy as live)
+   int totalAll = wins + losses + g_histWins + g_histLosses;
+   double accAll = (totalAll > 0) ? 100.0 * (wins + g_histWins) / totalAll : 0.0;
+   int closedAll = totalAll + scratches + cancels + g_histScratches;
+   double winRateAll = (closedAll > 0) ? 100.0 * (wins + g_histWins) / closedAll : 0.0;
+   double netAll = net + g_histWins * Payout - g_histLosses * 1.0;
+
+   string lines[14];
    int lineCount = 0;
    lines[lineCount++] = "CYBER BINARY EA";
    lines[lineCount++] = _Symbol + "  " + EnumToString(Period());
    if(!inTester)
       lines[lineCount++] = "----------------------------";
-   lines[lineCount++] = "Accuracy   " + DoubleToString(acc, 1) + "%  (" +
-                        IntegerToString(wins) + "W / " + IntegerToString(losses) + "L)";
-   lines[lineCount++] = "Win rate   " + DoubleToString(winRate, 1) + "%";
+   lines[lineCount++] = "Accuracy   " + DoubleToString(accAll, 1) + "%  (" +
+                        IntegerToString(wins + g_histWins) + "W / " +
+                        IntegerToString(losses + g_histLosses) + "L)";
+   lines[lineCount++] = "Live " + IntegerToString(wins) + "W/" + IntegerToString(losses) + "L" +
+                        "   Hist " + IntegerToString(g_histWins) + "W/" +
+                        IntegerToString(g_histLosses) + "L";
+   lines[lineCount++] = "Win rate   " + DoubleToString(winRateAll, 1) + "%";
    lines[lineCount++] = "Net (" + DoubleToString(Payout * 100.0, 0) + "%)  " +
-                        (net >= 0.0 ? "+" : "") + DoubleToString(net, 2);
+                        (netAll >= 0.0 ? "+" : "") + DoubleToString(netAll, 2);
    lines[lineCount++] = "Profit F.  " + DoubleToString(pf, 2) +
                         "   MaxDD " + DoubleToString(maxDD, 1);
    if(!inTester)
