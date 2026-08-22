@@ -25,6 +25,12 @@ any window size.
   ≥ 85% (Feb 90%, Mar 85%, Apr 93%, May 98%, Jun 96%, Jul 94%); PF 10.7.
 - Wide mode (`MicroPrecisionMode=false`): 16 signals/day at 86.6% blended.
 - Optional CALL rule (17:50–18:00 NY, 10-min): +6 signals/day at ~72–74%.
+- **Supported assets: EURJPY, USDJPY and GBPUSD on M5 only.** Other pairs
+  (e.g. EURUSD) are NOT validated — the research shows EURUSD is the weakest
+  major (58.3% best case, 71.9% flagship per-pair) and the dashboard will
+  honestly show ~40–50% on it. The EA prints a WARNING and the panel shows a
+  red `WARNING: <symbol> not validated` line when attached to an unsupported
+  pair.
 - Full research in [`docs/RESEARCH.md`](docs/RESEARCH.md).
 
 ### ⚠️ What 20+ years of data shows (read this)

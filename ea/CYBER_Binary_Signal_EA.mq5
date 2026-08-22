@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.38"
+#property version   "1.39"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -199,7 +199,7 @@ int               g_lastReportedBars = 0; // last coverage reported in the log
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   Print("CYBER Binary EA v1.38 starting on ", _Symbol, " ", EnumToString(Period()));
+   Print("CYBER Binary EA v1.39 starting on ", _Symbol, " ", EnumToString(Period()));
 
    //--- validate inputs
    if(ExpiryBars < 1)
@@ -305,6 +305,10 @@ int OnInit()
    Print("CYBER: server offset from GMT ", (int)(TimeCurrent() - TimeGMT()) / 3600,
          "h | stats file ", g_logFile,
          " | detected: ", DetectedModeText());
+   if(!IsValidatedPair())
+      Print("WARNING: ", _Symbol, " is NOT in the validated set (EURJPY / USDJPY / GBPUSD on M5). ",
+            "The backtested 90%+ accuracy does NOT apply to this pair - the dashboard will show its ",
+            "real (much lower) accuracy. Attach the EA to a supported pair.");
    return(INIT_SUCCEEDED);
   }
 
@@ -322,6 +326,16 @@ string SymbolFileName()
          StringSetCharacter(s, i, '_');
      }
    return(s);
+  }
+
+//+------------------------------------------------------------------+
+//| True when the symbol is one of the research-validated pairs       |
+//+------------------------------------------------------------------+
+bool IsValidatedPair()
+  {
+   return(StringFind(_Symbol, "EURJPY") >= 0 ||
+          StringFind(_Symbol, "USDJPY") >= 0 ||
+          StringFind(_Symbol, "GBPUSD") >= 0);
   }
 
 //+------------------------------------------------------------------+
@@ -1382,7 +1396,8 @@ void WriteDashboardHtml()
                                    net, pf, maxDD, callWins, callLosses, putWins, putLosses,
                                    bestStreak, worstStreak, seasonalTrades, burstTrades,
                                    microTrades, g_histWins, g_histLosses, g_histScratches,
-                                   g_histTrades, g_histScanned, DetectedModeText(), rows);
+                                   g_histTrades, g_histScanned, DetectedModeText(),
+                                   IsValidatedPair(), rows);
    int h = FileOpen(DashboardFile, FILE_TXT | FILE_WRITE | FILE_ANSI |
                     FILE_SHARE_READ | FILE_SHARE_WRITE);
    if(h == INVALID_HANDLE)
@@ -1403,7 +1418,7 @@ string BuildHtmlDocument(string side, int wins, int losses, int scratches, int c
                          int bestStreak, int worstStreak,
                          int seasonalTrades, int burstTrades, int microTrades,
                          int histWins, int histLosses, int histScratches, int histTrades,
-                         int histScanned, string modeTxt,
+                         int histScanned, string modeTxt, bool pairValid,
                          string rows)
   {
    int closedAll = wins + losses + scratches + cancels;
@@ -1453,6 +1468,12 @@ string BuildHtmlDocument(string side, int wins, int losses, int scratches, int c
    html += ".foot{margin-top:auto;text-align:center;color:var(--mut);font-size:clamp(10px,1.1vw,12px);padding:8px}";
    html += "@media(max-width:560px){.grid{grid-template-columns:repeat(2,1fr)}}";
    html += "</style></head><body><div class='wrap'>";
+   if(!pairValid)
+      html += "<div style='background:#3a1520;border:1px solid #ff5b5b;border-radius:12px;" +
+              "padding:14px 18px;color:#ffb3b3;font-size:clamp(12px,1.4vw,15px);'>&#9888; <b>" +
+              _Symbol + " is NOT in the validated set</b> - the backtested 90%+ accuracy applies " +
+              "to <b>EURJPY, USDJPY and GBPUSD on M5 only</b>. The numbers below are this pair's " +
+              "real accuracy (the dashboard keeps counting honestly).</div>";
    html += "<h1>CYBER Binary EA<span class='sub'>Quotex signal dashboard &middot; " + _Symbol +
            " &middot; " + EnumToString(Period()) + " &middot; " +
            TimeToString(TimeCurrent(), TIME_DATE | TIME_MINUTES) +
@@ -1596,7 +1617,12 @@ void UpdatePanel()
                            IntegerToString(seasonalTrades) + "  Burst " + IntegerToString(burstTrades);
       lines[lineCount++] = "----------------------------";
      }
-   lines[lineCount++] = "Status: " + CurrentWindowStatus();
+   if(!IsValidatedPair())
+      lines[lineCount++] = MQLInfoInteger(MQL_TESTER)
+                           ? "WARNING: pair NOT validated!"
+                           : "WARNING: " + _Symbol + " not validated - use EURJPY/USDJPY/GBPUSD M5";
+   else
+      lines[lineCount++] = "Status: " + CurrentWindowStatus();
 
    int panelH = lineCount * lineH + baseFont + 12;
 
@@ -1642,10 +1668,12 @@ void UpdatePanel()
       color txtColor = clrSilver;
       if(i == 0)                                          txtColor = clrGold;
       else if(i == 1)                                     txtColor = clrLightSkyBlue;
-      else if(StringFind(lines[i], "Accuracy") >= 0)      txtColor = clrLime;
+      else if(StringFind(lines[i], "Accuracy") >= 0)
+         txtColor = (totalAll >= 10 && accAll < 55.0) ? clrOrangeRed : clrLime;
       else if(StringFind(lines[i], "Win rate") >= 0)      txtColor = clrLime;
       else if(StringFind(lines[i], "Net (") >= 0)         txtColor = (net >= 0.0) ? clrLime : clrOrangeRed;
       else if(StringFind(lines[i], "Status:") >= 0)       txtColor = clrLightSkyBlue;
+      else if(StringFind(lines[i], "WARNING") >= 0)       txtColor = clrOrangeRed;
       ObjectSetInteger(0, name, OBJPROP_COLOR, txtColor);
       ObjectSetString(0, name, OBJPROP_TEXT, lines[i]);
       ObjectSetInteger(0, name, OBJPROP_SELECTABLE, false);
