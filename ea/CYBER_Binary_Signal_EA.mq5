@@ -29,7 +29,7 @@
 //+------------------------------------------------------------------+
 #property copyright "CYBER Binary EA"
 #property link      "https://github.com/lorenare0684-ai/CYBER-Binary-EA"
-#property version   "1.42"
+#property version   "1.43"
 #property description "Quotex binary-options CALL/PUT signal engine with auto-scaling dashboard"
 #property description "Flagship: Micro-Fix rule (M5, 92.6% blended precision / 93.3% EURJPY)"
 #property description "Precision mode: EURJPY 16:40-16:45 20min, USDJPY 16:45 30min, GBPUSD 16:40-16:45 25min"
@@ -206,7 +206,7 @@ int               g_profVerdict   = 0;    // 0=scanning 1=real 2=shifted 3=no pa
 //+------------------------------------------------------------------+
 int OnInit()
   {
-   Print("CYBER Binary EA v1.42 starting on ", _Symbol, " ", EnumToString(Period()));
+   Print("CYBER Binary EA v1.43 starting on ", _Symbol, " ", EnumToString(Period()));
 
    //--- validate inputs
    if(ExpiryBars < 1)
@@ -311,7 +311,9 @@ int OnInit()
          " | PaintHistorySignals ", PaintHistorySignals);
    Print("CYBER: server offset from GMT ",
          DoubleToString((TimeCurrent() - TimeGMT()) / 3600.0, 2),
-         "h | stats file ", g_logFile,
+         "h | local OS offset from GMT ",
+         DoubleToString((TimeLocal() - TimeGMT()) / 3600.0, 2),
+         "h (correct India = 5.50) | stats file ", g_logFile,
          " | detected: ", DetectedModeText());
    if(!IsValidatedPair())
       Print("WARNING: ", _Symbol, " is NOT in the validated set (EURJPY / USDJPY / GBPUSD on M5). ",
@@ -1769,11 +1771,13 @@ void UpdatePanel()
    string feedTxt = "Feed: scanning...";
    if(g_profVerdict == 1)
       feedTxt = "Feed: real - pattern " + MinutesToHm(g_profBestStart) + " NY " +
-                DoubleToString(g_profBestAcc, 0) + "%";
+                DoubleToString(g_profBestAcc, 0) + "% (n=" +
+                IntegerToString(g_profBestN) + ")";
    else if(g_profVerdict == 2)
      {
       feedTxt = "Feed: SHIFTED " + MinutesToHm(g_profBestStart) + " NY " +
-                DoubleToString(g_profBestAcc, 0) + "%";
+                DoubleToString(g_profBestAcc, 0) + "% (n=" +
+                IntegerToString(g_profBestN) + ")";
       if(NyShiftMin == 0)
          feedTxt += " - set NyShiftMin " +
                     IntegerToString(EffectivePutStartMin() - g_profBestStart);
@@ -1782,7 +1786,8 @@ void UpdatePanel()
      }
    else if(g_profVerdict == 3)
       feedTxt = "Feed: NO pattern (best " + MinutesToHm(g_profBestStart) + " " +
-                DoubleToString(g_profBestAcc, 0) + "%) - synthetic?";
+                DoubleToString(g_profBestAcc, 0) + "% n=" +
+                IntegerToString(g_profBestN) + ") - synthetic?";
    lines[lineCount++] = feedTxt;
 
    if(!IsValidatedPair())
