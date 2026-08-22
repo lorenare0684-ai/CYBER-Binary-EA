@@ -125,7 +125,10 @@ def main():
     for m in re.finditer(r"(?m)^\s*(#\w+)(.*)$", src):
         directive, rest = m.group(1), m.group(2)
         if directive == "#property":
-            if not re.search(r'"(?:[^"\\]|\\.)*"', rest):
+            # value-less script properties (#property strict, script_show_inputs, ...)
+            if re.search(r"\b(strict|script_show_inputs|show_inputs|tester_indicator|link|library|stacksize)\b", rest):
+                pass
+            elif not re.search(r'"(?:[^"\\]|\\.)*"', rest):
                 errors.append(f"line {src[:m.start()].count(chr(10))+1}: #property needs a quoted value")
         elif directive == "#define":
             if not re.search(r"\w+\s+[^\s]", rest):
@@ -150,10 +153,14 @@ def main():
         if len(poss) > 1:
             errors.append(f"duplicate function '{name}' defined {len(poss)} times")
 
-    # required entry points
-    for ep in ("OnInit", "OnDeinit", "OnTick", "OnTimer"):
-        if not re.search(r"\b" + ep + r"\s*\(", code):
-            errors.append(f"missing required entry point {ep}()")
+    # required entry points (EA: OnInit/OnDeinit/OnTick/OnTimer; a script has OnStart)
+    if re.search(r"\bOnStart\s*\(", code):
+        if not re.search(r"\bOnStart\s*\(", code):
+            errors.append("missing required entry point OnStart()")
+    else:
+        for ep in ("OnInit", "OnDeinit", "OnTick", "OnTimer"):
+            if not re.search(r"\b" + ep + r"\s*\(", code):
+                errors.append(f"missing required entry point {ep}()")
 
     # undeclared identifiers
     unknown = check_identifiers(src, code)
@@ -327,7 +334,7 @@ MQL5_BUILTINS = {
     "clrSteelBlue", "clrTan", "clrTeal", "clrThistle", "clrTomato", "clrTurquoise",
     "clrViolet", "clrWheat", "clrWhiteSmoke", "clrYellowGreen",
     # --- misc used ---
-    "INVALID_HANDLE", "OnInit", "OnDeinit", "OnTick", "OnTimer", "OnTester",
+    "INVALID_HANDLE", "OnInit", "OnDeinit", "OnTick", "OnTimer", "OnTester", "OnStart",
     "ArrayResize", "ArraySetAsSeries", "ArraySize", "ArrayInitialize", "ArrayFill",
     "ArrayCopy", "ArrayCompare", "ArrayInsert", "ArrayRemove", "ArrayReverse",
     "ArraySort", "ArrayMaximum", "ArrayMinimum", "ArrayRange", "ArrayGetAsSeries",

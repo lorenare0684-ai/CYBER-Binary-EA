@@ -15,7 +15,7 @@ Output:
     on-chart panel numbers
   - a verdict: real feed (and true server offset) vs synthetic/OTC feed
 """
-import sys, datetime
+import sys, os, glob, io, zipfile, tempfile, datetime
 import pandas as pd
 
 sys.path.insert(0, "backtest")
@@ -44,15 +44,24 @@ def ny_minute(utc_dt):
     return t.hour * 60 + t.minute, t.weekday()
 
 # ---------------------------------------------------------------------------
-# Load the broker export
+# Load the broker export (single CSV, zip, glob of part files, or a folder)
 # ---------------------------------------------------------------------------
-def load_broker_csv(path):
+def read_csv_text(path):
+    if path.lower().endswith(".zip"):
+        with zipfile.ZipFile(path) as z:
+            name = [n for n in z.namelist() if n.lower().endswith(".csv")][0]
+            return z.read(name).decode("utf-8", errors="replace")
+    with open(path, "r") as f:
+        return f.read()
+
+def parse_broker(text):
     meta = {}
-    with open(path) as f:
-        first = f.readline()
-        if first.startswith("#"):
-            pass
-    raw = pd.read_csv(path, comment="#")
+    for line in text.splitlines():
+        if line.startswith("#"):
+            parts = line.strip().lstrip("#").split(",")
+            if parts and parts[0] in ("offset_hours", "export_gmt", "bars", "part"):
+                meta[parts[0]] = ",".join(parts[1:])
+    raw = pd.read_csv(io.StringIO(text), comment="#")
     cols = {c.lower().strip(): c for c in raw.columns}
     tcol = cols.get("time(server)") or cols.get("time")
     ccol = cols.get("close")
@@ -60,14 +69,39 @@ def load_broker_csv(path):
     times = pd.to_datetime(raw[tcol])
     closes = raw[ccol].astype(float)
     opens = raw[ocol].astype(float) if ocol else None
-    # meta from comment rows
-    with open(path) as f:
-        for line in f:
-            if line.startswith("#"):
-                parts = line.strip().lstrip("#").split(",")
-                if parts and parts[0] in ("offset_hours", "export_gmt", "bars"):
-                    meta[parts[0]] = ",".join(parts[1:])
     return times, closes, opens, meta
+
+def load_broker(path):
+    if path.lower().endswith(".zip"):
+        with zipfile.ZipFile(path) as z:
+            names = sorted(n for n in z.namelist() if n.lower().endswith(".csv"))
+        paths = []
+        for name in names:
+            tmp = os.path.join(tempfile.gettempdir(), os.path.basename(name))
+            with zipfile.ZipFile(path) as z:
+                with open(tmp, "wb") as f:
+                    f.write(z.read(name))
+            paths.append(tmp)
+    elif os.path.isdir(path):
+        paths = sorted(glob.glob(os.path.join(path, "CYBER_*_history*.csv")))
+    else:
+        paths = sorted(glob.glob(path)) or [path]
+    if not paths:
+        print(f"ERROR: no files matched {path}")
+        sys.exit(1)
+    meta = {}
+    t_parts, c_parts = [], []
+    for p in paths:
+        t, c, _, m = parse_broker(read_csv_text(p))
+        t_parts.append(t)
+        c_parts.append(c)
+        if not meta:
+            meta = m
+        if len(paths) > 1:
+            print(f"  part {p}: {len(t)} bars")
+    times = pd.concat(t_parts).reset_index(drop=True)
+    closes = pd.concat(c_parts).reset_index(drop=True)
+    return times, closes, None, meta
 
 # ---------------------------------------------------------------------------
 # Window profile: PUT +20min, exact-expiry, NY 15-min slots 14:00-18:00
@@ -170,7 +204,7 @@ def main():
         sys.exit(1)
     path = sys.argv[1]
 
-    times, closes, opens, meta = load_broker_csv(path)
+    times, closes, opens, meta = load_broker(path)
     claimed = float(meta.get("offset_hours", "0") or 0)
     print(f"Broker file: {path}")
     print(f"  bars: {len(times)} | range: {times.iloc[0]} .. {times.iloc[-1]}")
